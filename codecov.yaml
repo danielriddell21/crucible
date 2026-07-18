@@ -1,0 +1,19 @@
+coverage:
+  range: "60...100"
+  status:
+    project:
+      default:
+        target: auto
+        threshold: 1%
+    # Patch (per-PR diff) coverage is advisory: the engine mixes unit-testable
+    # logic (well covered) with code that can only run with a display or by
+    # spawning child window processes (the multi-window hub's leader/child
+    # plumbing). Project coverage stays enforced so overall coverage can't
+    # quietly slide.
+    patch:
+      default:
+        informational: true
+
+# Tests aren't themselves covered code.
+ignore:
+  - "**/*_test.go"
