@@ -1,0 +1,108 @@
+package record_test
+
+import (
+	"image"
+	"image/color"
+	"image/gif"
+	"image/png"
+	"os"
+	"path/filepath"
+	"testing"
+
+	"github.com/danielriddell21/crucible/record"
+)
+
+func testFrame(w, h int, c color.RGBA) *image.RGBA {
+	img := image.NewRGBA(image.Rect(0, 0, w, h))
+	for y := range h {
+		for x := range w {
+			img.Set(x, y, c)
+		}
+	}
+	return img
+}
+
+func TestRecorderCapturesAndSaves(t *testing.T) {
+	r := record.NewRecorder(20, 2, 0)
+	r.Add(testFrame(8, 6, color.RGBA{R: 200, A: 255}))
+	r.Add(testFrame(8, 6, color.RGBA{B: 200, A: 255}))
+	if r.Len() != 2 || r.Done() {
+		t.Fatalf("Len = %d Done = %v", r.Len(), r.Done())
+	}
+	path := filepath.Join(t.TempDir(), "demo.gif")
+	if err := r.Save(path); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	g, err := gif.DecodeAll(f)
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(g.Image) != 2 {
+		t.Fatalf("frames = %d", len(g.Image))
+	}
+	// Downscale by 2: 8x6 -> 4x3.
+	if b := g.Image[0].Bounds(); b.Dx() != 4 || b.Dy() != 3 {
+		t.Fatalf("bounds = %v", b)
+	}
+	if g.Delay[0] != 5 { // 100/20 fps in centiseconds
+		t.Fatalf("delay = %d", g.Delay[0])
+	}
+}
+
+func TestRecorderFrameCap(t *testing.T) {
+	r := record.NewRecorder(10, 1, 2)
+	for range 5 {
+		r.Add(testFrame(4, 4, color.RGBA{G: 100, A: 255}))
+	}
+	if r.Len() != 2 || !r.Done() {
+		t.Fatalf("Len = %d Done = %v", r.Len(), r.Done())
+	}
+}
+
+func TestSaveEmptyFails(t *testing.T) {
+	r := record.NewRecorder(10, 1, 0)
+	if err := r.Save(filepath.Join(t.TempDir(), "empty.gif")); err == nil {
+		t.Fatal("Save of empty recording must fail")
+	}
+}
+
+func TestRecorderClampsArguments(t *testing.T) {
+	r := record.NewRecorder(0, 0, -1) // nonsense in, sane defaults out
+	r.Add(testFrame(2, 2, color.RGBA{A: 255}))
+	if r.Len() != 1 || r.Done() {
+		t.Fatalf("Len = %d Done = %v", r.Len(), r.Done())
+	}
+}
+
+func TestSavePNGRoundTrip(t *testing.T) {
+	fb := make([]byte, 4*3*4)
+	for i := 0; i < len(fb); i += 4 {
+		fb[i], fb[i+3] = 255, 255 // opaque red
+	}
+	img := record.FromRGBA(fb, 4, 3)
+	path := filepath.Join(t.TempDir(), "shot.png")
+	if err := record.SavePNG(path, img); err != nil {
+		t.Fatalf("SavePNG: %v", err)
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	decoded, err := png.Decode(f)
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if b := decoded.Bounds(); b.Dx() != 4 || b.Dy() != 3 {
+		t.Fatalf("bounds = %v", b)
+	}
+	r, _, _, _ := decoded.At(1, 1).RGBA()
+	if r != 0xffff {
+		t.Fatalf("pixel red = %#x", r)
+	}
+}
