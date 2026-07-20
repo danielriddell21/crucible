@@ -1,0 +1,16 @@
+# crucible
+
+> A Go library: the shared Ebitengine app/game engine behind danielriddell21's tool family. Fifteen flat packages covering GUI panels, world generation, title screens, audio synthesis, telemetry, and multi-window plumbing.
+
+crucible is importable as `github.com/danielriddell21/crucible/<package>`. It depends on ebiten, narrata, and ordinex.
+
+Packages: geom (vectors/coords/rects), hud (timed overlay), canvas (software text surface), menu (menu model + Ebiten input polling), store (JSON config persistence), status (cue -> HUD line pipeline), narrate (narrata-backed line rewording), telemetry (generic observer bus), synth (procedural PCM audio), record (GIF/PNG capture), hub (multi-window leader/child coordination), worldgen (BSP dungeons + flood-fill), raycast (camera/DDA/billboards), camera (2D pan/zoom).
+
+Design rules: app vocabularies (messages, events, cues, tiles) stay in each app — packages carrying them are generic; only menu and camera import Ebiten; randomness takes explicit seeds.
+
+## Docs
+
+- [pkg.go.dev reference](https://pkg.go.dev/github.com/danielriddell21/crucible)
+- [README](https://github.com/danielriddell21/crucible/blob/trunk/README.md)
+- [Provenance map](https://github.com/danielriddell21/crucible/blob/trunk/docs/provenance.md)
+- [Migration guides](https://github.com/danielriddell21/crucible/tree/trunk/migration)
