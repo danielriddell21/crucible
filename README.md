@@ -33,7 +33,8 @@ One package per engine concern, flat at the module root. App-specific vocabulari
 | `record` | Demo GIF recorder and PNG screenshots | rubix, gambit, galapagos, pandemonium |
 | `hub` | Multi-window leader/child coordination | rubix, hegemony, nemesis |
 | `worldgen` | BSP dungeon generation, corridors, flood-fill | pandemonium, nemesis |
-| `raycast` | Raycasting camera, DDA, billboard projection | pandemonium, nemesis |
+| `level` | Shared world model + generation pipeline: tiles, heights, half walls, lifts, doors, vents, themes, sky | pandemonium, nemesis |
+| `raycast` | Raycasting camera, DDA, billboards, height-aware column walker | pandemonium, nemesis |
 | `camera` | 2D pan/zoom camera for top-down views | vivarium |
 
 Only `menu` and `camera` import Ebiten; everything else is plain Go and runs headless.
@@ -42,19 +43,27 @@ Only `menu` and `camera` import Ebiten; everything else is plain Go and runs hea
 
 ```go
 import (
+    "github.com/danielriddell21/crucible/level"
     "github.com/danielriddell21/crucible/raycast"
-    "github.com/danielriddell21/crucible/worldgen"
 )
 
-// Carve a connected dungeon into your own tile grid.
-rooms := worldgen.Generate(worldgen.NewRNG(seed), myGrid, worldgen.Config{})
+// Generate a furnished level: rooms, corridors, heights, half walls,
+// doors, vents, themes, sky — retried until the exit is reachable.
+l, rooms, err := level.Generate(level.GenerateConfig{Width: 64, Height: 48, Seed: seed},
+    []level.Pass{
+        func(l *level.Level, rng *worldgen.RNG, rooms []geom.Rect) {
+            level.AssignHeights(l, rng, rooms, level.HeightsConfig{})
+            level.PlaceDoors(l, rng, level.DoorConfig{})
+            level.CarveVents(l, rooms, level.VentConfig{})
+        },
+    }, nil)
 
-// Cast a ray for every screen column.
+// Cast a ray for every screen column; WalkColumn handles variable
+// heights and half walls, painting through your renderer.
 cam := raycast.NewCamera(playerPos, playerAngle, fov)
 for x := range screenW {
-    rx, ry := cam.RayDir(x, screenW)
-    hit := raycast.Cast(cam.Pos, rx, ry, myGrid.Solid)
-    zbuf[x] = hit.Dist
+    res := raycast.WalkColumn(cam, screenW, screenH, x, eyeZ, l, myPainter)
+    zbuf[x] = res.Depth
 }
 ```
 
@@ -62,7 +71,7 @@ See each package's godoc for the full surface, and [`docs/provenance.md`](docs/p
 
 ## Migrating a family repo
 
-The [`migration/`](migration/) folder holds one guide per repo — rubix, gambit, vivarium, galapagos, hegemony, pandemonium, and nemesis — mapping its current files to crucible packages, call site by call site. ordinex and retrievium need no migration: crucible consumes them as dependencies.
+The [`migration/`](migration/) folder holds one guide per repo — rubix, gambit, vivarium, galapagos, hegemony, pandemonium, and nemesis — mapping its current files to crucible packages, call site by call site. ordinex needs no migration: crucible consumes it as a dependency (the `hub` sorts window ids with it). retrievium stays app-side — the guides note where its sorted-slice search fits each app.
 
 ## Why a library, not a framework
 

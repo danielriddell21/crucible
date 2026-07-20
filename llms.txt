@@ -4,9 +4,9 @@
 
 crucible is importable as `github.com/danielriddell21/crucible/<package>`. It depends on ebiten, narrata, and ordinex.
 
-Packages: geom (vectors/coords/rects), hud (timed overlay), canvas (software text surface), menu (menu model + Ebiten input polling), store (JSON config persistence), status (cue -> HUD line pipeline), narrate (narrata-backed line rewording), telemetry (generic observer bus), synth (procedural PCM audio), record (GIF/PNG capture), hub (multi-window leader/child coordination), worldgen (BSP dungeons + flood-fill), raycast (camera/DDA/billboards), camera (2D pan/zoom).
+Packages: geom (vectors/coords/rects), hud (timed overlay), canvas (software text surface), menu (menu model + Ebiten input polling), store (JSON config persistence), status (cue -> HUD line pipeline), narrate (narrata-backed line rewording), telemetry (generic observer bus), synth (procedural PCM audio), record (GIF/PNG capture), hub (multi-window leader/child coordination), worldgen (BSP dungeons + flood-fill), level (shared world model + generation pipeline: tiles, heights, half walls, lifts, doors, vents, themes, sky), raycast (camera/DDA/billboards + height-aware column walker), camera (2D pan/zoom).
 
-Design rules: app vocabularies (messages, events, cues, tiles) stay in each app — packages carrying them are generic; only menu and camera import Ebiten; randomness takes explicit seeds.
+Design rules: app vocabularies (messages, events, cues) stay in each app — packages carrying them are generic; the level package owns the spatial tile vocabulary so world features transfer between games; only menu and camera import Ebiten; the CLI entrypoint stays in each app (crucible is engine code, not CLI plumbing); randomness takes explicit seeds.
 
 ## Docs
 

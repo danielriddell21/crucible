@@ -67,20 +67,48 @@ Optional retrievium fit: `Event.Kind()` scans kind names linearly — with a
 sorted `[]string` of kind names, `retrievium.BinarySearcher[string]` does
 the lookup (cold path, called from tooling).
 
-## 8. `internal/world/bsp.go` + `connectivity.go` → `crucible/worldgen`
+## 8. `internal/world` → `crucible/level` (+ `worldgen`)
 
-As pandemonium §6, but simpler: nemesis has no height rule, so every flood
-call passes a `nil` step gate. `Room` is `geom.Rect` (same field layout),
-`Coord` is `geom.Coord`, the local `rng` is `worldgen.RNG` with identical
-seeding — fixed-seed decks regenerate identically. `vents.go`,
-`objectives.go`, `lockers.go`, doors, and spawn placement stay, now calling
-`worldgen.FloodDist`/`Reachable`/`StepsBetween`.
+`TileType` → `level.Tile` with two renames in the engine vocabulary:
+`TileConsole` → `level.TileSwitch` and `TileLocker` → `level.TileCover`
+(same walkability, same runes). The local `Level` becomes `level.Level`;
+`Room` is `geom.Rect`, `Coord` is `geom.Coord`, the local `rng` is
+`worldgen.RNG` with identical seeding.
 
-## 9. `internal/render` → `crucible/raycast` (geometry only)
+| Local | Crucible |
+|---|---|
+| `generate.go` attempt loop + `placeSpawnAndExit` | `level.Generate(cfg, passes, validate)` — keep the `len(l.VentMouths) >= 2` check in the validator |
+| bsp/corridors/stubs | `worldgen.Generate` (run by the pipeline) |
+| `doors.go` (`placeDoors`) | `level.PlaceDoors(l, rng, level.DoorConfig{})` |
+| `vents.go` (`carveVents`) | `level.CarveVents(l, rooms, level.VentConfig{})` — **improved**, see below |
+| `connectivity.go` | `worldgen.FloodDist`/`Reachable`/`StepsBetween` with a `nil` step gate |
+
+`CarveVents` is better than the local copy in three ways: mouths open at
+the centre of the wall span a room shares with the mass (the old
+perimeter scan biased them into top-left corners); each mouth joins the
+network by the cheapest path to the nearest already-carved tunnel, so
+networks branch like trees instead of snaking room to room in room-index
+order; and a configurable depth bias steers tunnels away from wall faces
+so they stay hidden from the rooms they pass. Same determinism guarantee;
+vent layouts for a given seed will differ from the old algorithm's.
+
+Stays app-side as `level.Pass` values: consoles/lockers placement (now
+setting `TileSwitch`/`TileCover`), objectives, light moods and `Flicker`
+(keep the flicker slice beside the level), runtime door slide state.
+Bonus from pandemonium, free to adopt: `level.AssignHeights`,
+`level.PlaceLowWalls`, `level.PlaceLiftLedge` + `level.LiftHeight`,
+`level.AssignThemes`, `level.AssignSky`, and `(*level.Level).StepOK` if
+decks ever gain height.
+
+## 9. `internal/render` → `crucible/raycast`
 
 - `castRay` in `walls.go` → `raycast.Cast` for plain columns; the sliding
   `doorColumn` logic keeps its own loop on
   `raycast.BoundaryDist`/`BoundaryWallX` (exported for exactly this).
+- Alternatively adopt `raycast.WalkColumn` wholesale (a `level.Level`
+  satisfies `raycast.Heights` directly): nemesis then renders heights,
+  half walls, and per-cell floors/ceilings the same way pandemonium does,
+  via a `raycast.ColumnPainter` that keeps nemesis's textures and palette.
 - The camera struct in `renderer.go` → `raycast.Camera`
   (`NewCamera(pos, angle, fov)`, `RayDir`).
 - `drawBillboard`'s projection → `raycast.Camera.Project`;

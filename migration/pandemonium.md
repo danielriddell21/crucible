@@ -70,27 +70,46 @@ Replace the primitives underneath:
 Rendered bytes are identical for the pure-tone cues; the noise-based ones
 stay sample-identical only if the same PCG seeds are passed (shown above).
 
-## 6. `internal/world/bsp.go` + `connectivity.go` → `crucible/worldgen`
+## 6. `internal/world` → `crucible/level` (+ `worldgen`)
 
-- Implement `worldgen.Carver` on `*Level` (`Open` = walkable floor,
-  `Carve` = set `TileFloor`); `Generate(worldgen.NewRNG(seed), level,
-  worldgen.Config{})` replaces `split`/`carveRooms`/`connect`/`carveStubs`
-  and returns the rooms (`geom.Rect` replaces the local `rect`).
-- The local `rng` type is `worldgen.RNG` (same seeding, same helper
-  semantics), so generated maps are unchanged for a given seed.
-- `connectivity.go`'s height rule moves into the flood `step` gate:
-  `worldgen.FloodDist(w, h, src, solid, stepOK)` with the existing
-  `stepOK` logic; `Reachable`/`StepsBetween` map to the crucible
-  functions with `nil` step where heights don't matter.
-- `neighbors4` → `worldgen.Neighbors4`.
+Most of `internal/world` **is** crucible now — pandemonium contributed the
+model. `TileType` → `level.Tile` (`TileSwitch` keeps its name and meaning),
+and the local `Level` becomes `level.Level` with the same field shapes
+(`FloorH`, `CeilH`, `WallTop` → `WallTopH`, `Light`, `Sky`, `Theme`,
+`Lifts`); `Coord` is `geom.Coord`, `rect` is `geom.Rect`, the local `rng`
+is `worldgen.RNG` (identical seeding).
 
-## 7. `internal/render` → `crucible/raycast` (geometry only)
+| Local | Crucible |
+|---|---|
+| `generate.go` `Generate` (attempt loop, sub-seed derivation, validation) | `level.Generate(cfg, passes, validate)` — same sub-seed constant; put `keysReachable` in the validator |
+| `placeSpawnAndExit` | `level.PlaceSpawnExit` (run automatically by the pipeline) |
+| bsp/corridors/stubs | `worldgen.Generate` (run automatically) |
+| `heights.go` (`assignHeights`) | `level.AssignHeights(l, rng, rooms, level.HeightsConfig{})` |
+| `placeLiftLedge` + sim `liftHeight` | `level.PlaceLiftLedge` (takes an `avoid` predicate for items/secrets and returns the ledge for the reward drop) + `level.LiftHeight(lift, t, dwell, travel)` |
+| `lowwall.go` | `level.PlaceLowWalls` |
+| `connectivity.go` (`stepOK`, flood) | `(*level.Level).StepOK` with `level.DefaultMaxStep`/`DefaultMinHeadroom` as the `step` gate of `worldgen.FloodDist` |
+| `theme.go` | `level.AssignThemes(l, rng, rooms, 3)` |
+| `sky.go` | `level.AssignSky(l, rng, rooms, level.SkyConfig{})` |
+
+Stays app-side, wrapped as `level.Pass` values in the pipeline: markers
+(`annotate.go`), gates/keys, items, barrels, hazards, switches, arenas,
+and `light.go`'s mood policy. Bonus from nemesis: `level.PlaceDoors` and
+`level.CarveVents` are now available if pandemonium ever wants sliding
+doors or crawl spaces.
+
+## 7. `internal/render` → `crucible/raycast`
 
 - `camera.go` → `raycast.Camera` (`NewCamera(pos, angle, fov)`,
   `RayDir(x, w)`); note crucible's camera also carries `Pos`.
-- The DDA core inside `columns.go` → `raycast.Cast` where the column is a
-  plain wall; the variable-height and low-wall column logic keeps its own
-  loop built on `raycast.BoundaryDist`/`BoundaryWallX`.
+- `columns.go`'s `drawColumn` → `raycast.WalkColumn`: the DDA, the
+  shrinking visible window, departed floor/ceiling fills, step and
+  ceiling-drop faces, half-wall see-over, and the low-wall occlusion
+  triple (`loZ`/`loH`/`loRow` → `ColumnResult`) all move to the engine.
+  What remains is a `raycast.ColumnPainter` implementation: `WallSpan`
+  keeps `drawWallSpan` (texture pick via `Face.Cell`/`Face.From` theme +
+  light, `Face.WallX`/`Flip` for the texture column), `FloorSpan` keeps
+  `fillFloorSpan` (hazard textures by cell), `CeilSpan` picks stone or
+  `fillSkySpan` via `SkyAt`.
 - Sprite placement math → `raycast.Camera.Project`; the per-frame depth
   ordering in `sprites.go:71` can use `raycast.SortFarToNear`.
 - Textures, shading, gloom, automap, statusbar, viewmodel: stay.

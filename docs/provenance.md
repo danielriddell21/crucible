@@ -17,11 +17,18 @@ was reviewed at its `feat/audio-cues` branch; every other repo at `trunk`.
 | `synth` | pandemonium `internal/audio/synth.go`; nemesis `internal/audio/synth.go` (render loop, envelopes, pan, and the shared cue shapes) | cue enums, `CueFor` mappings, each game's sound design |
 | `record` | rubix `internal/gui/record.go`; galapagos `internal/gui/record.go` (superset of both); gambit `internal/gui/record.go`; pandemonium `internal/gui/screenshot.go` | recording keybinds and drivers |
 | `hub` | rubix `internal/cli/coord.go` + `internal/gui/link.go`; hegemony `internal/cli/coord.go` + `internal/gui/link.go`; nemesis `internal/cli/coord.go` + `internal/gui/link.go` | each app's `Msg` type and its `Route` policy |
-| `worldgen` | pandemonium `internal/world/bsp.go` + `connectivity.go`; nemesis `internal/world/bsp.go` + `connectivity.go` | tile enums, levels, doors, items, heights (pandemonium's step rule plugs in via the flood `step` gate) |
-| `raycast` | nemesis `internal/render/walls.go` (DDA) + `sprites.go` (projection); pandemonium `internal/render/camera.go` + `columns.go` | texturing, shading, framebuffers, door/height column logic (built on the exported boundary helpers) |
+| `worldgen` | pandemonium `internal/world/bsp.go` + `connectivity.go`; nemesis `internal/world/bsp.go` + `connectivity.go` | app-specific carving beyond the shared passes |
+| `level` | the engine-owned world model: pandemonium `internal/world/level.go`, `tile.go`, `heights.go` (levels, dais, ceilings), `lowwall.go`, the lift ledge + kinematics, `generate.go` (attempt/validate pipeline, spawn/farthest-exit), `theme.go`, `sky.go`; nemesis `tile.go` (vent/console/locker → `TileVent`/`TileSwitch`/`TileCover`), `doors.go`, `vents.go` (**improved**: centred mouths instead of corner-biased, branching tree networks via nearest-carved-tunnel Dijkstra, depth bias keeping tunnels off wall faces) | items, markers, hazards, gates/keys, arenas, light moods and flicker, runtime door/lift state |
+| `raycast` | nemesis `internal/render/walls.go` (DDA) + `sprites.go` (projection); pandemonium `internal/render/camera.go` + `columns.go` (the height-aware column walk, as `WalkColumn` over a painter interface) | texturing, shading, framebuffers, sliding-door column logic (built on the exported boundary helpers) |
 | `camera` | vivarium `internal/gui/camera.go` | input wiring |
 
+The CLI entrypoint deliberately stays out of crucible: the root command and
+the `completion` subcommand (copied verbatim across rubix, gambit, and
+vivarium today) are CLI plumbing, not engine code, so each app keeps its own
+`internal/cli`. CONVENTIONS.md holds the family to a single shape for them.
+
 Dependencies consumed rather than consolidated: ordinex sorts the hub's
-window ids. ordinex is used
-only off the per-frame hot paths — render-time sorts keep their in-place
-insertion sorts deliberately.
+window ids, off the per-frame hot path — render-time sorts keep their
+in-place insertion sorts deliberately. retrievium is not a crucible
+dependency; the migration guides note where its sorted-slice search fits
+each app.
