@@ -20,8 +20,10 @@ dependency; the guides note where its sorted-slice search fits each app.
 
 ## Ground rules (all repos)
 
-- Add the dependency: `go get github.com/danielriddell21/crucible@latest`.
-- Migrate one package at a time; `just ci` must stay green after each step.
+- Work on a `refactor/adopt-crucible` branch off trunk, one crucible package
+  at a time; `just ci` (both build tags) must stay green after each step, and
+  smoke-run the real app before pushing.
+- Add the dependency: `go get github.com/danielriddell21/crucible@v0.1.0`.
 - Behaviour must not change: these are extractions, not redesigns. Where a
   crucible API differs from the local copy (noted per guide), adapt the call
   site, not the behaviour. One deliberate exception: nemesis's vent networks
@@ -33,5 +35,11 @@ dependency; the guides note where its sorted-slice search fits each app.
 - README, CI, lint rules, and justfiles stay as they are; no repo gains new
   workflows from this migration. The only expected diff outside `.go` files
   is `go.mod`/`go.sum`.
-- Until crucible's tag workflow has cut a release covering what you need,
-  pin the trunk pseudo-version the same way crucible pins ordinex.
+- **wrapcheck.** A call that used to return a local method's error now
+  returns one from an external package (crucible), so the `wrapcheck` linter
+  will flag it. Wrap it: `fmt.Errorf("…: %w", err)`. This bites the recorder
+  save (`record.Save`) and the hub runners (`hub.RunLeader`/`RunChild`), and
+  anywhere else a crucible error is returned unwrapped. Errors that are only
+  logged, not returned, are unaffected.
+- Pin the tagged release: `go get github.com/danielriddell21/crucible@v0.1.0`
+  (crucible in turn pins the tagged `ordinex/v2`, so the graph stays clean).
