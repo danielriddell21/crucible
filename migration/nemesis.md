@@ -35,11 +35,23 @@ mutators; replace path/load/save plumbing with
 `store.Save(path, s)`. The local `clamp01`/`clampRange` become
 `geom.Clamp01`/`geom.Clamp`.
 
-## 5. `internal/cli/coord.go` + `internal/gui/link.go` → `crucible/hub`
+## 5. `internal/cli/coord.go` → `crucible/hub`
 
-Same swap as rubix (see rubix.md §2) with nemesis's `Msg`/`StateMsg` as the
-type parameter. The local `trySend` in `link.go` is `hub.TrySend`. Keep
-`Msg` and `StateMsg` in `internal/gui`.
+The whole local hub (`newHub`, `addParticipant`, `broadcastExcept`, `drop`,
+`spawnChild`, `childLink`) is `hub.Hub[gui.Msg]`. nemesis spawns exactly one
+child — the visualiser — at startup, so `lead()` drives the primitives
+directly like hegemony rather than going through `hub.RunLeader`
+(`hub.New` → `AddParticipant` the game as id 0 → `go Run()` → a goroutine
+draining `leaderOut` into `Inject(0, …)` → `SpawnChild()`). `runChild` is
+`hub.RunChild`. The routing policy is a small `route(gui.Msg) hub.Route`:
+`hello` → `RouteState` (the shared level a late visualiser needs, cached and
+replayed — this replaces the local `last`/replay), `state`/`events` →
+`RouteBroadcast`, anything else → `RouteNone`.
+
+Keep `Msg`/`StateMsg` and the game's own `trySend` in `internal/gui`
+(`link.go` is untouched). Because `hub` imports `ordinex/v2`, `go mod tidy`
+adds that indirect entry; and `hub.RunChild` returns an external error, so
+wrap it (see the wrapcheck note in the README).
 
 ## 6. `internal/audio/synth.go` → `crucible/synth`
 
@@ -77,53 +89,79 @@ be decoration, not value. (Threshold-style "pick by cumulative weight"
 selection, which the engine *does* want, is a different search and lives in
 crucible as `worldgen.WeightedChoice`, built on stdlib `sort.Search`.)
 
-## 8. `internal/world` → `crucible/level` (+ `worldgen`)
+## 8. `internal/world` → `crucible/level` (+ `geom`, `worldgen`)
 
-`TileType` → `level.Tile` with two renames in the engine vocabulary:
-`TileConsole` → `level.TileSwitch` and `TileLocker` → `level.TileCover`
-(same walkability, same runes). The local `Level` becomes `level.Level`;
-`Room` is `geom.Rect`, `Coord` is `geom.Coord`, the local `rng` is
-`worldgen.RNG` with identical seeding.
+nemesis fully adopts the engine's world model. The regeneration is
+deliberate and accepted: the improved vents and the full-area BSP change
+every fixed-seed layout, so the tests are invariant-based (connectivity,
+console reachability, ≥2 vent mouths, border intact, determinism) rather
+than golden grids.
+
+The vocabulary moves to `level.Tile`. nemesis keeps its own domain names as
+thin aliases — exactly the engine's "games name tiles their own way"
+pattern:
+
+```go
+type Tile = level.Tile
+const (
+    TileConsole = level.TileSwitch // a wall-mounted interactable
+    TileLocker  = level.TileCover  // a hiding spot
+    // Floor/Wall/Door/Vent/Spawn/Exit map straight across
+)
+```
+
+`Coord`/`Room` are `geom.Coord`/`geom.Rect`. The `world.Level` becomes an
+aggregate that **embeds `*level.Level`** (promoting `At`, `Solid`, `LightAt`,
+`Spawn`, `Exit`, `VentMouths`, `W`/`H`, …) and adds nemesis's gameplay
+markers — the engine rule keeps items and markers app-side:
+
+```go
+type Level struct {
+    *level.Level
+    Rooms    []Room
+    Consoles []Coord
+    Lockers  []Coord
+    Flicker  []bool
+}
+```
+
+Generation is `level.Generate(cfg, passes, validate)`:
 
 | Local | Crucible |
 |---|---|
-| `generate.go` attempt loop + `placeSpawnAndExit` | `level.Generate(cfg, passes, validate)` — keep the `len(l.VentMouths) >= 2` check in the validator |
-| bsp/corridors/stubs | `worldgen.Generate` (run by the pipeline) |
-| `doors.go` (`placeDoors`) | `level.PlaceDoors(l, rng, level.DoorConfig{})` |
-| `vents.go` (`carveVents`) | `level.CarveVents(l, rooms, level.VentConfig{})` — **improved**, see below |
-| `connectivity.go` | `worldgen.FloodDist`/`Reachable`/`StepsBetween` with a `nil` step gate |
+| bsp/corridors/stubs, `placeSpawnAndExit` | run by the pipeline (`worldgen.Generate` + `PlaceSpawnExit`) |
+| `carveVents` | `level.CarveVents` — the improved tree-branching version |
+| `placeDoors` | `level.PlaceDoors` (byte-identical to the old copy) |
+| `connectivity.go` | `worldgen.FloodDist`/`Reachable` |
 
-`CarveVents` is better than the local copy in three ways: mouths open at
-the centre of the wall span a room shares with the mass (the old
-perimeter scan biased them into top-left corners); each mouth joins the
-network by the cheapest path to the nearest already-carved tunnel, so
-networks branch like trees instead of snaking room to room in room-index
-order; and a configurable depth bias steers tunnels away from wall faces
-so they stay hidden from the rooms they pass. Same determinism guarantee;
-vent layouts for a given seed will differ from the old algorithm's.
-
-Stays app-side as `level.Pass` values: consoles/lockers placement (now
-setting `TileSwitch`/`TileCover`), objectives, light moods and `Flicker`
-(keep the flicker slice beside the level), runtime door slide state.
-Bonus from pandemonium, free to adopt: `level.AssignHeights`,
-`level.PlaceLowWalls`, `level.PlaceLiftLedge` + `level.LiftHeight`,
-`level.AssignThemes`, `level.AssignSky`, and `(*level.Level).StepOK` if
-decks ever gain height.
+The console, locker, and light passes stay app-side as `level.Pass` closures
+that set `TileSwitch`/`TileCover` and record the marker slices onto the
+`Level` aggregate; `validate` keeps nemesis's viability rule (exit reachable,
+console count and faces reachable, ≥2 vent mouths). Two gotchas: `level.New`
+starts every cell fully lit, so `assignLight` clears the light field before
+laying its moods; and door-slide runtime state stays in `sim.World`, whose
+`Solid` still blocks closed doors (the engine's `Level.Solid` treats a door
+as walkable). The remaining `level` features (`AssignHeights`,
+`PlaceLowWalls`, lifts, themes, sky) are there for later if nemesis grows
+heights.
 
 ## 9. `internal/render` → `crucible/raycast`
 
-- `castRay` in `walls.go` → `raycast.Cast` for plain columns; the sliding
-  `doorColumn` logic keeps its own loop on
-  `raycast.BoundaryDist`/`BoundaryWallX` (exported for exactly this).
-- Alternatively adopt `raycast.WalkColumn` wholesale (a `level.Level`
-  satisfies `raycast.Heights` directly): nemesis then renders heights,
-  half walls, and per-cell floors/ceilings the same way pandemonium does,
-  via a `raycast.ColumnPainter` that keeps nemesis's textures and palette.
-- The camera struct in `renderer.go` → `raycast.Camera`
-  (`NewCamera(pos, angle, fov)`, `RayDir`).
-- `drawBillboard`'s projection → `raycast.Camera.Project`;
-  `sortByDepth` → `raycast.SortFarToNear(boards, depth)`.
-- Textures, palette, shading, HUD drawing: stay.
+The camera and projection come from the engine: the local `camera`/
+`newCamera` become `raycast.NewCamera`/`Camera.RayDir`, `drawBillboard`'s
+projection is `Camera.Project`, and `sortByDepth` is `SortFarToNear`. A
+`rayHit` is a `raycast.Hit`.
+
+The one thing kept local is the **ray walk itself**: nemesis animates
+sliding doors by letting a ray pass through the retracted fraction of a
+half-open door (`wallX < slide`), which `raycast.WalkColumn`'s binary
+`Solid` predicate can't express without teaching the engine about doors. So
+`castRay` keeps its own DDA loop built on the exported
+`raycast.BoundaryDist`/`BoundaryWallX` — which exist for exactly this
+sliding-door case — and `sim.World.Solid` remains the door-aware blocker.
+Column distances, projection, and sort are byte-identical to the old code.
+`WalkColumn` and per-cell heights are left for if nemesis ever renders a
+heightfield; textures, palette, shading, and HUD drawing stay local.
 
 ## 10. Screenshot/records capture
 
@@ -135,5 +173,11 @@ rather than porting rubix's file again.
 1. `hud`, `canvas`, `store` (mechanical).
 2. `menu` (verify title/pause/settings by hand).
 3. `synth`, `telemetry`.
-4. `worldgen` (fixed-seed regression), then `raycast`.
-5. `hub` last; verify the visualiser's multi-window keys.
+4. `hub`; verify the visualiser's multi-window keys.
+5. `geom` aliases and `worldgen` flood-fill first (output-neutral), then the
+   full `level` adoption and `raycast` — regeneration lands here, so lean on
+   the invariant tests and a `demogen` run to eyeball the maps and the 3D
+   view.
+
+Done on `refactor/adopt-crucible`, one commit per package. Only the sliding-
+door ray walk stays local (§9); everything else moves to the engine.
