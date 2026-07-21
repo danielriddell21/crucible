@@ -25,6 +25,20 @@ func (t *tiles) solid(c geom.Coord) bool {
 	return !t.open[c.Y*t.w+c.X]
 }
 
+// ExampleWeightedChoice picks a kind from a table of relative frequencies,
+// the way a generator chooses which item or hazard to place.
+func ExampleWeightedChoice() {
+	rng := worldgen.NewRNG(1)
+	weights := []float64{1, 3, 6} // common, uncommon, rare split 10/30/60
+
+	var counts [3]int
+	for range 1000 {
+		counts[worldgen.WeightedChoice(rng, weights)]++
+	}
+	fmt.Println(counts[0] < counts[1] && counts[1] < counts[2])
+	// Output: true
+}
+
 // ExampleGenerate carves a connected dungeon into a caller-owned grid and
 // confirms the rooms reach one another. The same seed always produces the
 // same map.
