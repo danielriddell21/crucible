@@ -22,7 +22,7 @@ import (
 	"os/exec"
 	"sync"
 
-	"github.com/danielriddell21/ordinex"
+	"github.com/danielriddell21/ordinex/v2"
 )
 
 // Route says what the hub should do with an inbound message.
