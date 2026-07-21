@@ -23,6 +23,17 @@ names = ordinex.MergeSorter[string]{}.Sort(names)          // returns a copy
 if _, ok := (retrievium.BinarySearcher[string]{}).Search(names, want); ok { ... }
 ```
 
+This is retrievium's honest home. Its searchers do *exact-match* membership
+("is `want` in this sorted slice, and where"), which is precisely a
+name→agent lookup. That's a genuine but app-local fit, so retrievium stays
+a gambit dependency and is deliberately **not** a crucible dependency: the
+engine's searchable lists (tile kinds, window ids, a few shells) are all
+small enough that a linear scan is as good, so a binary-search dependency
+in the engine would be decoration, not value. The one search the engine
+genuinely wants is threshold selection — "pick by cumulative weight" — which
+is a *different* search (upper-bound, not exact-match) and lives in crucible
+as `worldgen.WeightedChoice` on stdlib `sort.Search`.
+
 ## 3. Stays put
 
 - `internal/gui/game_ui.go`, `render.go`, `glyphs.go` — board drawing is

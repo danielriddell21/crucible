@@ -32,7 +32,7 @@ One package per engine concern, flat at the module root. App-specific vocabulari
 | `synth` | Procedural PCM sound effects, panning, cue shapes | pandemonium, nemesis |
 | `record` | Demo GIF recorder and PNG screenshots | rubix, gambit, galapagos, pandemonium |
 | `hub` | Multi-window leader/child coordination | rubix, hegemony, nemesis |
-| `worldgen` | BSP dungeon generation, corridors, flood-fill | pandemonium, nemesis |
+| `worldgen` | BSP dungeon generation, corridors, flood-fill, weighted choice | pandemonium, nemesis |
 | `level` | Shared world model + generation pipeline: tiles, heights, half walls, lifts, doors, vents, themes, sky | pandemonium, nemesis |
 | `raycast` | Raycasting camera, DDA, billboards, height-aware column walker | pandemonium, nemesis |
 | `camera` | 2D pan/zoom camera for top-down views | vivarium |

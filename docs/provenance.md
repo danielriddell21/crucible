@@ -29,6 +29,14 @@ vivarium today) are CLI plumbing, not engine code, so each app keeps its own
 
 Dependencies consumed rather than consolidated: ordinex sorts the hub's
 window ids, off the per-frame hot path — render-time sorts keep their
-in-place insertion sorts deliberately. retrievium is not a crucible
-dependency; the migration guides note where its sorted-slice search fits
-each app.
+in-place insertion sorts deliberately.
+
+retrievium is deliberately **not** a crucible dependency. Its searchers do
+exact-match membership on a sorted slice, and every such list in the engine
+(tile kinds, window ids, a handful of shells) is small enough that a linear
+scan is as good — a binary-search dependency here would be decoration, not
+value. Its honest fits are app-local exact-match lookups, called out in the
+gambit and nemesis guides. The one search the engine genuinely wants is
+threshold selection — pick an index by cumulative weight — which is a
+different search (upper-bound, not exact-match) and lives in
+`worldgen.WeightedChoice` on the standard library's `sort.Search`.

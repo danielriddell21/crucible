@@ -67,6 +67,16 @@ Optional retrievium fit: `Event.Kind()` scans kind names linearly — with a
 sorted `[]string` of kind names, `retrievium.BinarySearcher[string]` does
 the lookup (cold path, called from tooling).
 
+This is retrievium's honest home. Its searchers do *exact-match* membership
+("is `want` in this sorted slice, and where"), which is exactly what a
+name→kind lookup is. That's a genuine but app-local fit, so retrievium
+stays a nemesis dependency and is deliberately **not** pulled in through
+crucible — the engine's searchable lists are all tiny enough that a linear
+scan is as good, so wiring a binary-search dependency into the engine would
+be decoration, not value. (Threshold-style "pick by cumulative weight"
+selection, which the engine *does* want, is a different search and lives in
+crucible as `worldgen.WeightedChoice`, built on stdlib `sort.Search`.)
+
 ## 8. `internal/world` → `crucible/level` (+ `worldgen`)
 
 `TileType` → `level.Tile` with two renames in the engine vocabulary:
