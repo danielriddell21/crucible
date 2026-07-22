@@ -109,6 +109,42 @@ func TestEmptyPaletteIgnored(t *testing.T) {
 	}
 }
 
+func TestFrameDiffShrinksStaticScene(t *testing.T) {
+	r := record.NewRecorder(10, 1, 0, record.WithFrameDiff())
+	r.Add(testFrame(20, 20, color.RGBA{R: 10, G: 20, B: 30, A: 255}))
+	// Second frame differs only in a 3x3 corner.
+	f2 := testFrame(20, 20, color.RGBA{R: 10, G: 20, B: 30, A: 255})
+	for y := range 3 {
+		for x := range 3 {
+			f2.Set(x, y, color.RGBA{R: 200, A: 255})
+		}
+	}
+	r.Add(f2)
+
+	path := filepath.Join(t.TempDir(), "diff.gif")
+	if err := r.Save(path); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	g, err := gif.DecodeAll(f)
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(g.Image) != 2 {
+		t.Fatalf("frames = %d, want 2", len(g.Image))
+	}
+	if b := g.Image[0].Bounds(); b.Dx() != 20 || b.Dy() != 20 {
+		t.Errorf("first frame = %v, want full 20x20", b)
+	}
+	if b := g.Image[1].Bounds(); b.Dx() >= 20 && b.Dy() >= 20 {
+		t.Errorf("diff frame = %v, want a shrunk sub-rectangle", b)
+	}
+}
+
 func TestSaveEmptyFails(t *testing.T) {
 	r := record.NewRecorder(10, 1, 0)
 	if err := r.Save(filepath.Join(t.TempDir(), "empty.gif")); err == nil {

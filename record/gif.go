@@ -21,11 +21,14 @@ import (
 // Recorder accumulates downscaled, dithered frames for a demo GIF.
 type Recorder struct {
 	frames    []*image.Paletted
+	disposal  []byte
+	prev      *image.Paletted
 	pal       color.Palette
 	delayCs   int
 	finalCs   int
 	scale     int
 	maxFrames int
+	diff      bool
 	done      bool
 }
 
@@ -67,6 +70,16 @@ func WithFinalHold(centis int) Option {
 	}
 }
 
+// WithFrameDiff stores each frame as only the rectangle that changed since
+// the previous one, keeping the earlier pixels via GIF frame disposal. For a
+// mostly-static scene — a dashboard, a map beside a panel — this shrinks the
+// file dramatically. It quantises without dithering so unchanged regions stay
+// byte-identical between frames; pair it with [WithPalette] when the scene's
+// colours are known.
+func WithFrameDiff() Option {
+	return func(r *Recorder) { r.diff = true }
+}
+
 // NewRecorder returns a recorder that captures at the given frames per
 // second, downscaling each frame by scale. maxFrames caps the recording;
 // zero means unlimited. Out-of-range arguments are clamped to sane values.
@@ -90,12 +103,55 @@ func (r *Recorder) Add(img image.Image) {
 		return
 	}
 	small := downscale(img, r.scale)
-	p := image.NewPaletted(small.Bounds(), r.pal)
-	draw.FloydSteinberg.Draw(p, small.Bounds(), small, image.Point{})
-	r.frames = append(r.frames, p)
+	full := image.NewPaletted(small.Bounds(), r.pal)
+	if r.diff {
+		// Nearest-colour so unchanged regions match the previous frame exactly.
+		draw.Draw(full, small.Bounds(), small, image.Point{}, draw.Src)
+	} else {
+		draw.FloydSteinberg.Draw(full, small.Bounds(), small, image.Point{})
+	}
+
+	frame := full
+	disposal := byte(gif.DisposalNone)
+	if r.diff && r.prev != nil {
+		box, changed := diffBox(r.prev, full)
+		if !changed {
+			box = image.Rect(0, 0, 1, 1) // GIF frames may not be empty
+		}
+		sub := image.NewPaletted(box, r.pal)
+		draw.Draw(sub, box, full, box.Min, draw.Src)
+		frame = sub
+	}
+	r.frames = append(r.frames, frame)
+	r.disposal = append(r.disposal, disposal)
+	if r.diff {
+		r.prev = full
+	}
 	if r.maxFrames > 0 && len(r.frames) >= r.maxFrames {
 		r.done = true
 	}
+}
+
+// diffBox returns the smallest rectangle covering every pixel that differs
+// between the two frames, and whether any pixel changed.
+func diffBox(a, b *image.Paletted) (image.Rectangle, bool) {
+	w, h := b.Rect.Dx(), b.Rect.Dy()
+	minX, minY, maxX, maxY := w, h, -1, -1
+	for y := range h {
+		ra := a.Pix[y*a.Stride : y*a.Stride+w]
+		rb := b.Pix[y*b.Stride : y*b.Stride+w]
+		for x := range w {
+			if ra[x] == rb[x] {
+				continue
+			}
+			minX, maxX = min(minX, x), max(maxX, x)
+			minY, maxY = min(minY, y), max(maxY, y)
+		}
+	}
+	if maxX < 0 {
+		return image.Rectangle{}, false
+	}
+	return image.Rect(minX, minY, maxX+1, maxY+1), true
 }
 
 // Len returns the number of captured frames.
@@ -121,7 +177,7 @@ func (r *Recorder) Save(path string) error {
 	if err != nil {
 		return fmt.Errorf("record: create %q: %w", path, err)
 	}
-	if err := gif.EncodeAll(f, &gif.GIF{Image: r.frames, Delay: delays}); err != nil {
+	if err := gif.EncodeAll(f, &gif.GIF{Image: r.frames, Delay: delays, Disposal: r.disposal}); err != nil {
 		_ = f.Close()
 		return fmt.Errorf("record: encode %q: %w", path, err)
 	}
