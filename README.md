@@ -35,7 +35,11 @@ One package per engine concern, flat at the module root. App-specific vocabulari
 | `worldgen` | BSP dungeon generation, corridors, flood-fill, weighted choice | pandemonium, nemesis |
 | `level` | Shared world model + generation pipeline: tiles, heights, half walls, lifts, doors, vents, themes, sky | pandemonium, nemesis |
 | `raycast` | Raycasting camera, DDA, billboards, height-aware column walker | pandemonium, nemesis |
-| `camera` | 2D pan/zoom camera for top-down views | vivarium |
+| `view` | Display-free 2D pan/zoom camera: world↔screen, follow, fit-to-bounds | galapagos |
+| `camera` | Ebiten draw transform layered over a 2D view | vivarium |
+| `rng` | Deterministic seeded sub-streams (PCG) | galapagos, hegemony |
+| `ring` | Fixed-capacity rolling-history buffer | galapagos, vivarium |
+| `paint` | Colour brightness scaling and full-frame framebuffer blend | pandemonium, nemesis |
 
 Only `menu` and `camera` import Ebiten; everything else is plain Go and runs headless.
 

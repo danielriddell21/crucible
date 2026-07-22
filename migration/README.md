@@ -13,6 +13,10 @@ No repo has been changed; each guide is the worklist for doing so.
 | [pandemonium.md](pandemonium.md) | github.com/danielriddell21/pandemonium | **feat/audio-cues** |
 | [nemesis.md](nemesis.md) | github.com/danielriddell21/nemesis | trunk |
 
+[AUDIT.md](AUDIT.md) records the second pass: what a follow-up review moved
+into crucible (`rng`, `view`, `ring`, `paint`, `raycast.Camera.ProjectAt`)
+and, for everything shared-looking that stayed app-side, exactly why.
+
 ordinex has no guide: nothing migrates out of it — crucible consumes it as a
 dependency (the `hub` sorts window ids with it), and the app guides call out
 further call sites where its interface fits. retrievium is not a crucible
