@@ -35,5 +35,5 @@ xvfb-run -a go test ./...
 3. Write `<name>/<name>_test.go` in package `<name>_test`. Cover the happy
    path, the boundary cases, and determinism where a seed is involved.
 4. Document every exported symbol — the revive `exported` rule enforces it.
-5. Update the relevant guides in `migration/` so the family repos know how
-   to adopt the package.
+5. Add a row to `docs/provenance.md` recording where the package came from
+   and what stays app-side.

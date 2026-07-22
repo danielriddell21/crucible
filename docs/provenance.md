@@ -4,6 +4,13 @@ Where each crucible package came from: the files that were reviewed and
 consolidated, and what deliberately stayed behind in each repo. Pandemonium
 was reviewed at its `feat/audio-cues` branch; every other repo at `trunk`.
 
+The last four rows (`view`, `rng`, `ring`, `paint`) came from a second pass
+over the family. The rule of thumb, in order: if two or more repos carry the
+same display-free logic, extract it; if it is nearly the same but carries
+app-defined values, make the engine side generic and let each app keep its
+vocabulary; otherwise leave it, and say why (see *Deliberately not
+consolidated* below).
+
 | Package | Consolidated from | Stays app-side |
 |---|---|---|
 | `geom` | vivarium `internal/geom/vec2.go`; the `Vec2`/`Coord`/`Room` types and clamp helpers repeated in pandemonium, nemesis, and hegemony | — |
@@ -21,10 +28,42 @@ was reviewed at its `feat/audio-cues` branch; every other repo at `trunk`.
 | `level` | the engine-owned world model: pandemonium `internal/world/level.go`, `tile.go`, `heights.go` (levels, dais, ceilings), `lowwall.go`, the lift ledge + kinematics, `generate.go` (attempt/validate pipeline, spawn/farthest-exit), `theme.go`, `sky.go`; nemesis `tile.go` (vent/console/locker → `TileVent`/`TileSwitch`/`TileCover`), `doors.go`, `vents.go` (**improved**: centred mouths instead of corner-biased, branching tree networks via nearest-carved-tunnel Dijkstra, depth bias keeping tunnels off wall faces) | items, markers, hazards, gates/keys, arenas, light moods and flicker, runtime door/lift state |
 | `raycast` | nemesis `internal/render/walls.go` (DDA) + `sprites.go` (projection); pandemonium `internal/render/camera.go` + `columns.go` (the height-aware column walk, as `WalkColumn` over a painter interface) | texturing, shading, framebuffers, sliding-door column logic (built on the exported boundary helpers) |
 | `camera` | vivarium `internal/gui/camera.go` | input wiring |
+| `view` | galapagos `internal/core/camera.go` — the display-free pan/zoom math, adopted back as a type alias; `camera` now layers the Ebiten draw transform over it | the Ebiten draw transform (stays in `camera`) |
+| `rng` | galapagos `internal/sim/rng.go` + hegemony `internal/sim/rng.go` (the PCG stream constructor), and gambit's three agent seeders | each app's stream ids and seed policy |
+| `ring` | galapagos `internal/sim/telemetry.go` (`Ring[T]`) + vivarium's two hand-rolled bounded histories | what each ring holds |
+| `paint` | pandemonium `internal/render/{walls,columns,sprites,tint}.go` + nemesis `internal/render/{renderer,hud}.go` (colour brightness scale + full-frame blend) | each game's distance-shading curve (art direction) |
 
-The CLI entrypoint deliberately stays out of crucible: the root command and
-the `completion` subcommand (copied verbatim across rubix, gambit, and
-vivarium today) are CLI plumbing, not engine code, so each app keeps its own
+## Deliberately not consolidated
+
+Things that look shared but stay in each app, and why:
+
+- **HUD / panel rendering** (galapagos, vivarium, hegemony, gambit, rubix).
+  Blocked two ways: only `menu` and `camera` may import Ebiten, so a panel
+  renderer cannot become a package without breaking that rule; and the panels
+  are genuinely bespoke (different data, different layouts) with no shared
+  logic, only a shared look. The one display-free kernel behind them — the
+  rolling history a sparkline plots — did move, as `ring`. Text screens that
+  do not sit on a live GL frame already have `canvas`.
+- **Sprite frame / direction picking** (pandemonium, nemesis). Both choose a
+  sprite per entity, but by different schemes (a `bands × dirs` face table vs.
+  a state-and-time `alienFrame`). Gameplay presentation, app-side by the
+  engine rules.
+- **Notice / narration text** (pandemonium, nemesis). `notice()` and
+  `Event.Line()` turn events into player-facing strings — the app-defined
+  message vocabulary the engine must not grow. The mechanism is already shared
+  (`telemetry.Bus`, `hud`, `status`, `narrate`); only the words stay home.
+- **Telemetry event types** (all sims). Each `Event`/`Observation` is app
+  vocabulary; the generic fan-out is `telemetry.Bus`.
+- **Distance-shading curves** (pandemonium, nemesis). How brightness falls off
+  with distance is art direction — different formulas, different constants.
+  Only the pixel op (`paint.Scale`) is shared.
+- **Neural networks** (vivarium `neural`, galapagos `nn`). Genuinely different
+  nets (recurrent per-agent brains vs. feed-forward NEAT genomes); the shared
+  surface is too thin to be worth a common package.
+
+The CLI entrypoint also stays out of crucible: the root command and the
+`completion` subcommand (copied verbatim across rubix, gambit, and vivarium
+today) are CLI plumbing, not engine code, so each app keeps its own
 `internal/cli`. CONVENTIONS.md holds the family to a single shape for them.
 
 Dependencies consumed rather than consolidated: ordinex sorts the hub's

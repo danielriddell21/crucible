@@ -73,9 +73,9 @@ for x := range screenW {
 
 See each package's godoc for the full surface, and [`docs/provenance.md`](docs/provenance.md) for exactly which files in which repos each package replaces.
 
-## Migrating a family repo
+## The family, migrated
 
-The [`migration/`](migration/) folder holds one guide per repo — rubix, gambit, vivarium, galapagos, hegemony, pandemonium, and nemesis — mapping its current files to crucible packages, call site by call site. ordinex needs no migration: crucible consumes it as a dependency (the `hub` sorts window ids with it). retrievium stays app-side — the guides note where its sorted-slice search fits each app.
+All seven apps — rubix, gambit, vivarium, galapagos, hegemony, pandemonium, and nemesis — now build on crucible. [`docs/provenance.md`](docs/provenance.md) maps every package to the files it replaced, and records what was deliberately left app-side and why. ordinex needs no migration — crucible consumes it as a dependency (the `hub` sorts window ids with it) — and retrievium stays app-side, its sorted-slice search a linear scan's-worth of value away from being worth a dependency.
 
 ## Why a library, not a framework
 

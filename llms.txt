@@ -13,4 +13,3 @@ Design rules: app vocabularies (messages, events, cues) stay in each app — pac
 - [pkg.go.dev reference](https://pkg.go.dev/github.com/danielriddell21/crucible)
 - [README](https://github.com/danielriddell21/crucible/blob/trunk/README.md)
 - [Provenance map](https://github.com/danielriddell21/crucible/blob/trunk/docs/provenance.md)
-- [Migration guides](https://github.com/danielriddell21/crucible/tree/trunk/migration)
