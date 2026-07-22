@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/spf13/pflag"
+
 	"github.com/danielriddell21/crucible/record"
 )
 
@@ -142,6 +144,40 @@ func TestFrameDiffShrinksStaticScene(t *testing.T) {
 	}
 	if b := g.Image[1].Bounds(); b.Dx() >= 20 && b.Dy() >= 20 {
 		t.Errorf("diff frame = %v, want a shrunk sub-rectangle", b)
+	}
+}
+
+func TestOptionsAddFlagsAndDefaults(t *testing.T) {
+	// A pre-set field becomes that flag's default; zero fields use canonical ones.
+	o := record.Options{Scale: 2}
+	fs := pflag.NewFlagSet("t", pflag.ContinueOnError)
+	o.AddFlags(fs)
+	if err := fs.Parse([]string{"--record", "out.gif", "--record-frames", "120"}); err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if !o.Recording() || o.Path != "out.gif" {
+		t.Errorf("Path = %q, Recording = %v", o.Path, o.Recording())
+	}
+	if o.FPS != 30 { // canonical default
+		t.Errorf("FPS = %d, want 30", o.FPS)
+	}
+	if o.Scale != 2 { // preset default preserved
+		t.Errorf("Scale = %d, want 2", o.Scale)
+	}
+	if o.Frames != 120 { // overridden by flag
+		t.Errorf("Frames = %d, want 120", o.Frames)
+	}
+}
+
+func TestNewFromOptions(t *testing.T) {
+	r := record.New(record.Options{FPS: 20, Scale: 2, Frames: 2})
+	r.Add(testFrame(8, 8, color.RGBA{R: 200, A: 255}))
+	r.Add(testFrame(8, 8, color.RGBA{G: 200, A: 255}))
+	if !r.Done() { // capped at 2 frames
+		t.Errorf("recorder should be done at its frame cap")
+	}
+	if !(record.Options{Path: "x"}).Recording() || (record.Options{}).Recording() {
+		t.Error("Recording() should track whether a path is set")
 	}
 }
 
