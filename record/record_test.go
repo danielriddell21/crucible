@@ -64,6 +64,51 @@ func TestRecorderFrameCap(t *testing.T) {
 	}
 }
 
+func TestRecorderOptions(t *testing.T) {
+	// A palette paced one frame per event, holding the last frame longer.
+	pal := color.Palette{color.RGBA{A: 255}, color.RGBA{R: 255, A: 255}}
+	r := record.NewRecorder(20, 1, 0,
+		record.WithPalette(pal),
+		record.WithFrameDelay(70),
+		record.WithFinalHold(400),
+	)
+	r.Add(testFrame(4, 4, color.RGBA{R: 255, A: 255}))
+	r.Add(testFrame(4, 4, color.RGBA{R: 255, A: 255}))
+
+	path := filepath.Join(t.TempDir(), "demo.gif")
+	if err := r.Save(path); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	g, err := gif.DecodeAll(f)
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if g.Delay[0] != 70 {
+		t.Errorf("frame delay = %d, want 70 (WithFrameDelay)", g.Delay[0])
+	}
+	if last := g.Delay[len(g.Delay)-1]; last != 400 {
+		t.Errorf("final delay = %d, want 400 (WithFinalHold)", last)
+	}
+	// The pure-red frame must quantise to the red entry of the custom palette.
+	rr, gg, bb, _ := g.Image[0].At(0, 0).RGBA()
+	if rr>>8 != 255 || gg != 0 || bb != 0 {
+		t.Errorf("pixel = (%d,%d,%d), want red from the custom palette", rr>>8, gg>>8, bb>>8)
+	}
+}
+
+func TestEmptyPaletteIgnored(t *testing.T) {
+	r := record.NewRecorder(10, 1, 0, record.WithPalette(nil))
+	r.Add(testFrame(2, 2, color.RGBA{G: 200, A: 255}))
+	if r.Len() != 1 {
+		t.Fatalf("Len = %d; empty palette should fall back to the default", r.Len())
+	}
+}
+
 func TestSaveEmptyFails(t *testing.T) {
 	r := record.NewRecorder(10, 1, 0)
 	if err := r.Save(filepath.Join(t.TempDir(), "empty.gif")); err == nil {
