@@ -169,6 +169,37 @@ func TestOptionsAddFlagsAndDefaults(t *testing.T) {
 	}
 }
 
+func TestOptionsAddPacedFlags(t *testing.T) {
+	// A paced recorder exposes only --record and --record-frames; --record-fps
+	// and --record-scale are deliberately absent.
+	o := record.Options{}
+	fs := pflag.NewFlagSet("t", pflag.ContinueOnError)
+	o.AddPacedFlags(fs)
+	if fs.Lookup("record-fps") != nil || fs.Lookup("record-scale") != nil {
+		t.Error("paced flags must not register --record-fps or --record-scale")
+	}
+	if err := fs.Parse([]string{"--record", "clip.gif", "--record-frames", "40"}); err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if !o.Recording() || o.Path != "clip.gif" || o.Frames != 40 {
+		t.Errorf("Path = %q, Frames = %d, Recording = %v", o.Path, o.Frames, o.Recording())
+	}
+}
+
+func TestOptionsAddPacedFlagsFramesDefault(t *testing.T) {
+	// A pre-set Frames becomes the flag's default; the zero value stays zero
+	// (record the whole run).
+	o := record.Options{Frames: 150}
+	fs := pflag.NewFlagSet("t", pflag.ContinueOnError)
+	o.AddPacedFlags(fs)
+	if err := fs.Parse(nil); err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if o.Frames != 150 {
+		t.Errorf("Frames = %d, want preset default 150", o.Frames)
+	}
+}
+
 func TestNewFromOptions(t *testing.T) {
 	r := record.New(record.Options{FPS: 20, Scale: 2, Frames: 2})
 	r.Add(testFrame(8, 8, color.RGBA{R: 200, A: 255}))
