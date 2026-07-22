@@ -39,6 +39,18 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.IntVar(&o.Frames, "record-frames", frames, "frames to capture before exiting")
 }
 
+// AddPacedFlags registers the --record and --record-frames flags on fs, bound
+// to o, for a recorder whose playback is paced by a fixed per-frame delay
+// ([WithFrameDelay]) rather than a real-time frame rate. It omits --record-fps
+// and --record-scale, which such a recorder ignores: the frame delay overrides
+// the fps-derived timing, and these event-paced demos capture at full
+// resolution. A zero Frames leaves the cap to the caller (its own default or
+// the whole run); pre-set it to change the flag's default.
+func (o *Options) AddPacedFlags(fs *pflag.FlagSet) {
+	fs.StringVar(&o.Path, "record", o.Path, "record the run to this GIF path, then exit")
+	fs.IntVar(&o.Frames, "record-frames", o.Frames, "frames to capture before exiting")
+}
+
 // Recording reports whether a recording was requested (a path was set).
 func (o Options) Recording() bool { return o.Path != "" }
 
