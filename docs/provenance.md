@@ -32,18 +32,21 @@ consolidated* below).
 | `rng` | galapagos `internal/sim/rng.go` + hegemony `internal/sim/rng.go` (the PCG stream constructor), and gambit's three agent seeders | each app's stream ids and seed policy |
 | `ring` | galapagos `internal/sim/telemetry.go` (`Ring[T]`) + vivarium's two hand-rolled bounded histories | what each ring holds |
 | `paint` | pandemonium `internal/render/{walls,columns,sprites,tint}.go` + nemesis `internal/render/{renderer,hud}.go` (colour brightness scale + full-frame blend) | each game's distance-shading curve (art direction) |
+| `keymap` | galapagos `Keymap []string` + `drawKeymap`; vivarium's two hard-coded overlay hint lines; rubix `segments` + `wrapHelp`; gambit's `hints` bar — the shared "key: action" control-bar layout (format, wrap, bottom-anchored stacking), kept display-free via a caller-supplied width measure | which keys each app binds and what they do |
 
 ## Deliberately not consolidated
 
 Things that look shared but stay in each app, and why:
 
-- **HUD / panel rendering** (galapagos, vivarium, hegemony, gambit, rubix).
+- **HUD / data panel rendering** (galapagos, vivarium, hegemony, gambit, rubix).
   Blocked two ways: only `menu` and `camera` may import Ebiten, so a panel
   renderer cannot become a package without breaking that rule; and the panels
   are genuinely bespoke (different data, different layouts) with no shared
-  logic, only a shared look. The one display-free kernel behind them — the
-  rolling history a sparkline plots — did move, as `ring`. Text screens that
-  do not sit on a live GL frame already have `canvas`.
+  logic, only a shared look. The display-free kernels behind them did move: the
+  rolling history a sparkline plots, as `ring`; and the control-hint bar's
+  layout, as `keymap` (it takes a width-measure callback, so it positions the
+  "key: action" hints without importing Ebiten). Text screens that do not sit
+  on a live GL frame already have `canvas`.
 - **Sprite frame / direction picking** (pandemonium, nemesis). Both choose a
   sprite per entity, but by different schemes (a `bands × dirs` face table vs.
   a state-and-time `alienFrame`). Gameplay presentation, app-side by the
