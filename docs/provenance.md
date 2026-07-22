@@ -33,6 +33,7 @@ consolidated* below).
 | `ring` | galapagos `internal/sim/telemetry.go` (`Ring[T]`) + vivarium's two hand-rolled bounded histories | what each ring holds |
 | `paint` | pandemonium `internal/render/{walls,columns,sprites,tint}.go` + nemesis `internal/render/{renderer,hud}.go` (colour brightness scale + full-frame blend) | each game's distance-shading curve (art direction) |
 | `keymap` | galapagos `Keymap []string` + `drawKeymap`; vivarium's two hard-coded overlay hint lines; rubix `segments` + `wrapHelp`; gambit's `hints` bar — the shared "key: action" control-bar layout (format, wrap, bottom-anchored stacking), kept display-free via a caller-supplied width measure | which keys each app binds and what they do |
+| `window` | the `SetWindowSize`/`SetWindowTitle`/`SetWindowResizingMode` setup every app's `gui` package repeated, unified so every window is resizable with the same policy (imports Ebiten, like `menu`/`camera`) | each app's title and computed size |
 
 ## Deliberately not consolidated
 
