@@ -44,6 +44,36 @@ func (c Camera) Project(p geom.Vec2, w, h int, scale float64) (Placement, bool) 
 	return Placement{ScreenX: screenX, Top: top, Size: size, Depth: transY}, true
 }
 
+// ProjectAt places a world position standing at world height worldZ onto a
+// w×h screen, scaled by scale and viewed from eye height eyeZ. When grounded
+// the billboard's base rests on worldZ; otherwise it is centred on worldZ —
+// so games with variable floor heights can stand sprites on ledges and lifts
+// or float projectiles at altitude. It reports false when the position is
+// behind the camera or too small to draw.
+func (c Camera) ProjectAt(p geom.Vec2, worldZ, eyeZ float64, w, h int, scale float64, grounded bool) (Placement, bool) {
+	relX := p.X - c.Pos.X
+	relY := p.Y - c.Pos.Y
+
+	// Inverse camera transform into screen space.
+	invDet := 1 / (c.PlaneX*c.DirY - c.DirX*c.PlaneY)
+	transX := invDet * (c.DirY*relX - c.DirX*relY)
+	depth := invDet * (-c.PlaneY*relX + c.PlaneX*relY)
+	if depth <= nearPlane {
+		return Placement{}, false
+	}
+	size := int(float64(h) / depth * scale)
+	if size < minSize {
+		return Placement{}, false
+	}
+	screenX := int(float64(w) / 2 * (1 + transX/depth))
+	anchor := ProjectRow(h, eyeZ, worldZ, depth)
+	top := anchor - size
+	if !grounded {
+		top = anchor - size/2
+	}
+	return Placement{ScreenX: screenX, Top: top, Size: size, Depth: depth}, true
+}
+
 // SortFarToNear orders items by descending depth so nearer billboards
 // overdraw farther ones. It sorts in place with a simple insertion sort:
 // billboard counts are small and the call sits on the per-frame hot path,

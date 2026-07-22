@@ -136,6 +136,32 @@ func TestProjectTooSmall(t *testing.T) {
 	}
 }
 
+func TestProjectAtAnchorsOnHeight(t *testing.T) {
+	c := raycast.NewCamera(geom.Vec2{X: 0, Y: 0}, 0, math.Pi/2)
+	const eyeZ = 0.5
+	low, ok := c.ProjectAt(geom.Vec2{X: 4, Y: 0}, 0, eyeZ, 320, 200, 1, true)
+	if !ok {
+		t.Fatal("grounded sprite must project")
+	}
+	high, ok := c.ProjectAt(geom.Vec2{X: 4, Y: 0}, 0.5, eyeZ, 320, 200, 1, true)
+	if !ok {
+		t.Fatal("raised sprite must project")
+	}
+	if high.Size != low.Size || high.ScreenX != low.ScreenX {
+		t.Fatalf("raising z should not change size/column: low=%+v high=%+v", low, high)
+	}
+	if high.Top >= low.Top { // higher z sits higher on screen (smaller Top)
+		t.Errorf("a raised sprite should sit higher: low.Top=%d high.Top=%d", low.Top, high.Top)
+	}
+	floating, _ := c.ProjectAt(geom.Vec2{X: 4, Y: 0}, 0, eyeZ, 320, 200, 1, false)
+	if floating.Top != low.Top+(low.Size-low.Size/2) {
+		t.Errorf("floating anchor = %d, want %d", floating.Top, low.Top+(low.Size-low.Size/2))
+	}
+	if _, ok := c.ProjectAt(geom.Vec2{X: -4, Y: 0}, 0, eyeZ, 320, 200, 1, true); ok {
+		t.Fatal("behind the camera must not project")
+	}
+}
+
 func TestSortFarToNear(t *testing.T) {
 	items := []float64{1, 4, 2, 9, 3}
 	raycast.SortFarToNear(items, func(v float64) float64 { return v })
