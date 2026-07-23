@@ -61,6 +61,20 @@ func BottomBar(bindings []Binding, w, h, pad int, f Face) []Line {
 	return lines
 }
 
+// CenterPrompt lays out a single binding as a contextual prompt, centred
+// horizontally and sitting in the lower third of a w×h screen. Games use it for
+// "look at a door → E: open" hints that appear only while an interactive object
+// is in focus. The returned Line shares the top-left origin convention of
+// [BottomBar].
+func CenterPrompt(b Binding, w, h int, f Face) Line {
+	label := b.Label()
+	return Line{
+		X:    (w - f.Measure(label)) / 2,
+		Y:    h*70/100 - f.LineHeight/2,
+		Text: label,
+	}
+}
+
 // wrap greedily packs binding labels into rows no wider than avail.
 func wrap(bindings []Binding, avail int, measure func(string) int) []string {
 	var rows []string

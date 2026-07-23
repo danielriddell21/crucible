@@ -56,6 +56,21 @@ func TestBottomBarWrapsAndStacks(t *testing.T) {
 	}
 }
 
+func TestCenterPrompt(t *testing.T) {
+	// "E: open" is 7 bytes → 7px wide with oneByte; centred in a 100px screen
+	// gives x = (100-7)/2 = 46, and y sits in the lower third.
+	line := keymap.CenterPrompt(keymap.Binding{Key: "E", Action: "open"}, 100, 200, keymap.Face{LineHeight: 16, Measure: oneByte})
+	if line.Text != "E: open" {
+		t.Errorf("text = %q", line.Text)
+	}
+	if line.X != (100-7)/2 {
+		t.Errorf("X = %d, want %d (centred)", line.X, (100-7)/2)
+	}
+	if line.Y != 200*70/100-8 {
+		t.Errorf("Y = %d, want %d (lower third)", line.Y, 200*70/100-8)
+	}
+}
+
 func TestBottomBarKeepsOversizedBindingOnItsOwnRow(t *testing.T) {
 	// A binding wider than the available width still gets a row of its own
 	// rather than being dropped.
