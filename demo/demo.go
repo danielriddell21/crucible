@@ -3,18 +3,17 @@
 // stills into a contact sheet ([Montage]), and builds the brightness ramps a
 // clean GIF palette needs ([Ramp]).
 //
-// It is display-free. A game whose renderer produces a raw framebuffer can
-// generate its whole docs/demos set with no window and no display, which is
-// how the family's demogen tools run in CI. Front-ends that only render
-// through Ebiten cannot: they capture their live window through the --record
-// flag instead.
+// It is display-free. A front-end that can draw a frame into a pixel buffer —
+// its own software renderer, or a crucible canvas — generates its whole docs/demos set
+// with no window and no display, which is how the family builds its media in
+// CI.
 //
 // What each clip shows — which levels, which staging, which inputs — stays in
 // the game. This package only drives and assembles.
 package demo
 
 import (
-	"fmt"
+	"errors"
 	"image"
 	"image/color"
 	"image/draw"
@@ -46,41 +45,56 @@ type Clip struct {
 	Ready func(step int) bool
 	// Frame renders the current state. It is called only for captured frames.
 	Frame func(step int) image.Image
+	// Stop ends the clip once it returns true, checked after each captured
+	// frame so the finishing state is included. A run of unknown length — a
+	// game that ends when it ends — uses this instead of a frame count. Nil
+	// runs on to Frames or MaxSteps.
+	Stop func(step int) bool
 }
 
 // Record runs the clip, adding frames to rec, and reports how many it
 // captured. It stops at the frame count, the step cap, or when the recorder
 // reports itself done — whichever comes first.
 func (c Clip) Record(rec *record.Recorder) (int, error) {
-	if c.Step == nil || c.Frame == nil {
-		return 0, fmt.Errorf("demo: Clip needs both Step and Frame")
-	}
-	if c.Frames <= 0 && c.MaxSteps <= 0 {
-		return 0, fmt.Errorf("demo: Clip needs Frames or MaxSteps to terminate")
+	if err := c.validate(); err != nil {
+		return 0, err
 	}
 	every := max(c.Every, 1)
 	captured, rolling := 0, c.Ready == nil
-	for step := 0; c.MaxSteps <= 0 || step < c.MaxSteps; step++ {
-		if c.Frames > 0 && captured >= c.Frames {
-			break
-		}
-		if rec.Done() {
-			break
-		}
+	for step := 0; c.moreSteps(step) && !c.enough(captured) && !rec.Done(); step++ {
 		if err := c.Step(step); err != nil {
 			return captured, err
 		}
-		if !rolling && c.Ready(step) {
-			rolling = true
-		}
+		// Short-circuits when Ready is nil, since rolling then starts true.
+		rolling = rolling || c.Ready(step)
 		if !rolling || step%every != 0 {
 			continue
 		}
 		rec.Add(c.Frame(step))
 		captured++
+		if c.Stop != nil && c.Stop(step) {
+			break
+		}
 	}
 	return captured, nil
 }
+
+// validate reports why the clip could not run, if it could not.
+func (c Clip) validate() error {
+	if c.Step == nil || c.Frame == nil {
+		return errors.New("demo: Clip needs both Step and Frame")
+	}
+	if c.Frames <= 0 && c.MaxSteps <= 0 && c.Stop == nil {
+		return errors.New("demo: Clip needs Frames, MaxSteps or Stop to terminate")
+	}
+	return nil
+}
+
+// moreSteps reports whether the step cap still allows another step.
+func (c Clip) moreSteps(step int) bool { return c.MaxSteps <= 0 || step < c.MaxSteps }
+
+// enough reports whether the frame count has been reached.
+func (c Clip) enough(captured int) bool { return c.Frames > 0 && captured >= c.Frames }
 
 // Montage tiles cells into a grid of the given column count, separated and
 // bordered by gap pixels of bg. Cells are laid out left to right, top to

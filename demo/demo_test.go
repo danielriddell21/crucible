@@ -97,6 +97,30 @@ func TestClipStopsAtMaxStepsWhenNeverReady(t *testing.T) {
 	}
 }
 
+func TestClipStopsWhenTheRunFinishes(t *testing.T) {
+	// A run of unknown length: it ends on its own after six steps.
+	steps := 0
+	c := demo.Clip{
+		Frames:   100,
+		MaxSteps: 100,
+		Step:     func(int) error { steps++; return nil },
+		Frame:    func(int) image.Image { return solid(4, 4, color.RGBA{A: 255}) },
+		Stop:     func(step int) bool { return step >= 5 },
+	}
+	rec := record.NewRecorder(25, 1, 0)
+	got, err := c.Record(rec)
+	if err != nil {
+		t.Fatalf("record: %v", err)
+	}
+	// Six frames: steps 0..5, with the finishing state captured before stopping.
+	if got != 6 {
+		t.Errorf("captured = %d, want 6 including the final state", got)
+	}
+	if steps != 6 {
+		t.Errorf("Step called %d times, want 6", steps)
+	}
+}
+
 func TestClipStopsAtRecorderCap(t *testing.T) {
 	c := demo.Clip{
 		Frames: 100,
