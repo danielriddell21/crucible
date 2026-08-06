@@ -115,3 +115,41 @@ func TestShapesClipToTheCanvas(t *testing.T) {
 		t.Error("the line crossing the canvas should still paint it")
 	}
 }
+
+func TestBlendCompositesOverExistingPixels(t *testing.T) {
+	c := canvas.New(10, 10)
+	c.Fill(color.RGBA{R: 0, G: 0, B: 0, A: 255})
+	// Half-opacity white over black lands about halfway.
+	c.Blend(0, 0, 10, 10, color.RGBA{R: 255, G: 255, B: 255, A: 128})
+	got := alphaAt(c, 5, 5)
+	if got < 120 || got > 136 {
+		t.Errorf("blended value = %d, want ~128", got)
+	}
+}
+
+func TestBlendFullyOpaqueReplaces(t *testing.T) {
+	c := canvas.New(6, 6)
+	c.Fill(color.RGBA{A: 255})
+	c.Blend(0, 0, 6, 6, color.RGBA{R: 200, A: 255})
+	if got := alphaAt(c, 3, 3); got != 200 {
+		t.Errorf("opaque blend = %d, want 200", got)
+	}
+}
+
+func TestBlendTransparentIsNoOp(t *testing.T) {
+	c := canvas.New(6, 6)
+	c.Fill(color.RGBA{R: 10, A: 255})
+	c.Blend(0, 0, 6, 6, color.RGBA{R: 250})
+	if got := alphaAt(c, 3, 3); got != 10 {
+		t.Errorf("zero alpha changed the pixel to %d", got)
+	}
+}
+
+func TestBlendClipsToCanvas(t *testing.T) {
+	c := canvas.New(6, 6)
+	c.Fill(color.RGBA{A: 255})
+	c.Blend(-4, -4, 20, 20, color.RGBA{R: 255, A: 255}) // must not panic
+	if got := alphaAt(c, 0, 0); got != 255 {
+		t.Errorf("clipped blend = %d, want it to still paint in-bounds pixels", got)
+	}
+}

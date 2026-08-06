@@ -81,6 +81,39 @@ func (c *Canvas) Rect(x, y, w, h int, col color.RGBA) {
 	}
 }
 
+// Blend fills a rectangle, compositing col over what is already there. Unlike
+// [Canvas.Rect], which paints opaquely, it reads col.A as straight (not
+// premultiplied) opacity — so a tint highlighting a board square or a band
+// dimming the scene behind a banner lets the picture show through.
+func (c *Canvas) Blend(x, y, w, h int, col color.RGBA) {
+	a := float64(col.A) / 255
+	if a <= 0 {
+		return
+	}
+	for dy := range h {
+		py := y + dy
+		if py < 0 || py >= c.h {
+			continue
+		}
+		for dx := range w {
+			px := x + dx
+			if px < 0 || px >= c.w {
+				continue
+			}
+			i := (py*c.w + px) * 4
+			c.img.Pix[i] = mix(c.img.Pix[i], col.R, a)
+			c.img.Pix[i+1] = mix(c.img.Pix[i+1], col.G, a)
+			c.img.Pix[i+2] = mix(c.img.Pix[i+2], col.B, a)
+			c.img.Pix[i+3] = 255
+		}
+	}
+}
+
+// mix blends src over dst at opacity a.
+func mix(dst, src byte, a float64) byte {
+	return uint8(float64(dst)*(1-a) + float64(src)*a + 0.5)
+}
+
 // Text draws s with its baseline at (x, y) in the built-in 7x13 face.
 func (c *Canvas) Text(x, y int, s string, col color.RGBA) {
 	d := &font.Drawer{
