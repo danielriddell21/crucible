@@ -1,12 +1,17 @@
-// Package canvas provides a small software drawing surface for menus and
-// text overlays, so a front-end can compose text screens the same way a
+// Package canvas provides a small software drawing surface for menus, text
+// overlays and 2D scenes, so a front-end can compose them the same way a
 // software renderer composes frames: as raw RGBA pixels.
 //
 // [New] returns a [Canvas] sized to the window. Callers compose a screen
 // with [Canvas.Fill] or [Canvas.DimFrom], [Canvas.Rect], [Canvas.Text],
 // and [Canvas.TextCentered], then pass [Canvas.Pixels] to the WritePixels
-// method of an Ebiten image. The package does not import Ebiten itself, so
-// it needs no display.
+// method of an Ebiten image. [Canvas.Line], [Canvas.Circle] and
+// [Canvas.Polygon] add anti-aliased vector shapes, enough for a 2D
+// visualizer to draw a whole frame without a display.
+//
+// The package does not import Ebiten itself, so it needs no display: the
+// same drawing code can render a live window or, through a headless
+// front-end, the project's documentation media.
 package canvas
 
 import (
