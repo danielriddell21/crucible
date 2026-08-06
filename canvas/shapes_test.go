@@ -185,3 +185,14 @@ func TestRingIgnoresNonPositiveRadius(t *testing.T) {
 		t.Error("a zero radius should draw nothing")
 	}
 }
+
+func TestShapeAlphaIsStraightNotPremultiplied(t *testing.T) {
+	c := canvas.New(20, 20)
+	c.Fill(color.RGBA{A: 255}) // black
+	// Half-opacity red, given in straight alpha as Blend takes it.
+	c.Polygon([][2]float64{{2, 2}, {18, 2}, {18, 18}, {2, 18}}, color.RGBA{R: 255, A: 128})
+	got := alphaAt(c, 10, 10)
+	if got < 120 || got > 136 {
+		t.Errorf("half-opacity red over black = %d, want ~128", got)
+	}
+}

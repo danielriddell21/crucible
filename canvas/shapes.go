@@ -125,5 +125,18 @@ func (c *Canvas) rasterise(bounds image.Rectangle, col color.RGBA, emit func(r *
 	}
 	r := vector.NewRasterizer(b.Dx(), b.Dy())
 	emit(r, float32(b.Min.X), float32(b.Min.Y))
-	r.Draw(c.img, b, image.NewUniform(col), image.Point{})
+	// Shape colours are given in straight alpha, as [Canvas.Blend] takes them;
+	// the rasteriser composites in premultiplied space.
+	r.Draw(c.img, b, image.NewUniform(premultiply(col)), image.Point{})
+}
+
+// premultiply converts a straight-alpha colour to the premultiplied form Go's
+// image compositing expects.
+func premultiply(c color.RGBA) color.RGBA {
+	if c.A == 0xff {
+		return c
+	}
+	a := uint32(c.A)
+	scale := func(v uint8) uint8 { return uint8((uint32(v)*a + 127) / 255) }
+	return color.RGBA{R: scale(c.R), G: scale(c.G), B: scale(c.B), A: c.A}
 }
