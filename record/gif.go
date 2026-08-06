@@ -1,9 +1,11 @@
-// Package record captures frames from a running visualizer into demo GIFs
-// and PNG screenshots, the way the family's --record flags and screenshot
-// keys do.
+// Package record captures frames from a running visualizer into demo GIFs,
+// MP4 clips and PNG screenshots, the way the family's --record flags and
+// screenshot keys do.
 //
 // A [Recorder] (from [NewRecorder]) accumulates downscaled, dithered
 // frames via [Recorder.Add] and writes a looping GIF with [Recorder.Save].
+// [WithVideo] — applied automatically by [New] for an .mp4 path — switches it
+// to an H.264 MP4 instead, which stays small where a long GIF would not.
 // For stills, [FromRGBA] wraps a software renderer's raw framebuffer as an
 // image and [SavePNG] writes it out.
 package record
@@ -18,7 +20,8 @@ import (
 	"os"
 )
 
-// Recorder accumulates downscaled, dithered frames for a demo GIF.
+// Recorder accumulates downscaled frames for a demo GIF, or — in video mode,
+// see [WithVideo] — raw frames for an MP4.
 type Recorder struct {
 	frames    []*image.Paletted
 	disposal  []byte
@@ -30,6 +33,12 @@ type Recorder struct {
 	maxFrames int
 	diff      bool
 	done      bool
+
+	// Video mode keeps the frames as raw RGBA instead of quantising them, so
+	// ffmpeg encodes true colour rather than a palette's approximation.
+	video      bool
+	raw        [][]byte
+	rawW, rawH int
 }
 
 // Option configures a [Recorder] at construction. See [WithPalette],
@@ -80,6 +89,16 @@ func WithFrameDiff() Option {
 	return func(r *Recorder) { r.diff = true }
 }
 
+// WithVideo makes the recorder keep raw RGBA frames and write an H.264 MP4
+// from [Recorder.Save] instead of a GIF. Video stays small where a long GIF
+// would not, and skips palette quantisation entirely, so the palette and
+// frame-diff options no longer apply. It needs ffmpeg on PATH; without it Save
+// returns [ErrNoFFmpeg]. [New] applies this automatically when the recording
+// path ends in .mp4.
+func WithVideo() Option {
+	return func(r *Recorder) { r.video = true }
+}
+
 // NewRecorder returns a recorder that captures at the given frames per
 // second, downscaling each frame by scale. maxFrames caps the recording;
 // zero means unlimited. Out-of-range arguments are clamped to sane values.
@@ -100,6 +119,10 @@ func NewRecorder(fps, scale, maxFrames int, opts ...Option) *Recorder {
 // Add captures one frame. Frames past the cap are dropped.
 func (r *Recorder) Add(img image.Image) {
 	if r.done {
+		return
+	}
+	if r.video {
+		r.addRaw(img)
 		return
 	}
 	small := downscale(img, r.scale)
@@ -154,15 +177,43 @@ func diffBox(a, b *image.Paletted) (image.Rectangle, bool) {
 	return image.Rect(minX, minY, maxX+1, maxY+1), true
 }
 
+// addRaw keeps a frame as raw RGBA for video encoding. ffmpeg is fed a fixed
+// frame size, so frames that disagree with the first are ignored.
+func (r *Recorder) addRaw(img image.Image) {
+	small := downscale(img, r.scale)
+	b := small.Bounds()
+	if r.rawW == 0 {
+		r.rawW, r.rawH = b.Dx(), b.Dy()
+	}
+	if b.Dx() != r.rawW || b.Dy() != r.rawH {
+		return
+	}
+	r.raw = append(r.raw, append([]byte(nil), small.Pix...))
+	if r.maxFrames > 0 && len(r.raw) >= r.maxFrames {
+		r.done = true
+	}
+}
+
 // Len returns the number of captured frames.
-func (r *Recorder) Len() int { return len(r.frames) }
+func (r *Recorder) Len() int {
+	if r.video {
+		return len(r.raw)
+	}
+	return len(r.frames)
+}
 
 // Done reports whether the recorder has reached its frame cap.
 func (r *Recorder) Done() bool { return r.done }
 
-// Save writes the captured frames as a looping GIF at path. It fails when
-// nothing was captured.
+// Save writes the captured frames to path: a looping GIF, or an H.264 MP4 when
+// the recorder is in video mode ([WithVideo]). It fails when nothing was
+// captured.
 func (r *Recorder) Save(path string) error {
+	if r.video {
+		// The frame delay doubles as the video's frame rate, so GIF and MP4
+		// clips built from the same recorder play at the same speed.
+		return EncodeMP4(path, r.raw, r.rawW, r.rawH, 100/float64(r.delayCs))
+	}
 	if len(r.frames) == 0 {
 		return fmt.Errorf("record: no frames captured")
 	}

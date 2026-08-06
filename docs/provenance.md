@@ -22,7 +22,7 @@ consolidated* below).
 | `narrate` | pandemonium `internal/phrasing/phrasing.go` | `personas.json`, the cue→event/data mapping |
 | `telemetry` | pandemonium `internal/telemetry/bus.go`; nemesis `internal/telemetry/telemetry.go` (bus mechanics: fan-out, nil filtering, bounded feed) | event types, path/profile aggregation, feed wording |
 | `synth` | pandemonium `internal/audio/synth.go`; nemesis `internal/audio/synth.go` (render loop, envelopes, pan, and the shared cue shapes) | cue enums, `CueFor` mappings, each game's sound design |
-| `record` | rubix `internal/gui/record.go`; galapagos `internal/gui/record.go` (superset of both); gambit `internal/gui/record.go`; pandemonium `internal/gui/screenshot.go` | recording keybinds and drivers |
+| `record` | rubix `internal/gui/record.go`; galapagos `internal/gui/record.go` (superset of both); gambit `internal/gui/record.go`; pandemonium `internal/gui/screenshot.go`; pandemonium `tools/demogen`'s `encodeMP4` (as the video mode behind an `.mp4` `--record` path) | recording keybinds and drivers |
 | `hub` | rubix `internal/cli/coord.go` + `internal/gui/link.go`; hegemony `internal/cli/coord.go` + `internal/gui/link.go`; nemesis `internal/cli/coord.go` + `internal/gui/link.go` | each app's `Msg` type and its `Route` policy |
 | `worldgen` | pandemonium `internal/world/bsp.go` + `connectivity.go`; nemesis `internal/world/bsp.go` + `connectivity.go` | app-specific carving beyond the shared passes |
 | `level` | the engine-owned world model: pandemonium `internal/world/level.go`, `tile.go`, `heights.go` (levels, dais, ceilings), `lowwall.go`, the lift ledge + kinematics, `generate.go` (attempt/validate pipeline, spawn/farthest-exit), `theme.go`, `sky.go`; nemesis `tile.go` (vent/console/locker → `TileVent`/`TileSwitch`/`TileCover`), `doors.go`, `vents.go` (**improved**: centred mouths instead of corner-biased, branching tree networks via nearest-carved-tunnel Dijkstra, depth bias keeping tunnels off wall faces) | items, markers, hazards, gates/keys, arenas, light moods and flicker, runtime door/lift state |
@@ -34,6 +34,7 @@ consolidated* below).
 | `paint` | pandemonium `internal/render/{walls,columns,sprites,tint}.go` + nemesis `internal/render/{renderer,hud}.go` (colour brightness scale + full-frame blend) | each game's distance-shading curve (art direction) |
 | `keymap` | galapagos `Keymap []string` + `drawKeymap`; vivarium's two hard-coded overlay hint lines; rubix `segments` + `wrapHelp`; gambit's `hints` bar — the shared "key: action" control-bar layout (format, wrap, bottom-anchored stacking), kept display-free via a caller-supplied width measure | which keys each app binds and what they do |
 | `window` | the `SetWindowSize`/`SetWindowTitle`/`SetWindowResizingMode` setup every app's `gui` package repeated, unified so every window is resizable with the same policy (imports Ebiten, like `menu`/`camera`) | each app's title and computed size |
+| `demo` | the shared mechanics of nemesis's and pandemonium's `tools/demogen`: the capture loop (`Clip`), the contact-sheet tiling behind `stationsMontage` and the stills grids (`Montage`), and pandemonium's `demoPalette` brightness fan-out (`Ramp`) | every clip's content — which levels, staging, bot inputs, palette colours and crops each game shows off |
 
 ## Deliberately not consolidated
 

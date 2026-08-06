@@ -55,8 +55,13 @@ func (o *Options) AddPacedFlags(fs *pflag.FlagSet) {
 func (o Options) Recording() bool { return o.Path != "" }
 
 // New returns a recorder configured from o. Extra options ([WithPalette],
-// [WithFrameDiff], …) still apply.
+// [WithFrameDiff], …) still apply. When o.Path names an .mp4 the recorder is
+// put in video mode ([WithVideo]), so a front-end's --record flag chooses GIF
+// or MP4 by file extension alone.
 func New(o Options, opts ...Option) *Recorder {
+	if IsVideoPath(o.Path) {
+		opts = append([]Option{WithVideo()}, opts...)
+	}
 	return NewRecorder(o.FPS, o.Scale, o.Frames, opts...)
 }
 
