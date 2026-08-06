@@ -33,6 +33,40 @@ func (c *Canvas) Circle(x, y, radius float64, col color.RGBA) {
 	c.Polygon(circlePoints(x, y, radius), col)
 }
 
+// Ring strokes a circle's outline of the given width, anti-aliased — the halo
+// round a highlighted entity, a radius marker on a map. A width at or beyond
+// the radius fills the disc.
+func (c *Canvas) Ring(x, y, radius, width float64, col color.RGBA) {
+	if radius <= 0 {
+		return
+	}
+	width = math.Max(width, 1)
+	inner := radius - width
+	if inner <= 0 {
+		c.Circle(x, y, radius, col)
+		return
+	}
+	outer := circlePoints(x, y, radius)
+	// The hole is wound the other way, so nonzero filling leaves it empty.
+	hole := circlePoints(x, y, inner)
+	for i, j := 0, len(hole)-1; i < j; i, j = i+1, j-1 {
+		hole[i], hole[j] = hole[j], hole[i]
+	}
+	c.rasterise(boundsOf(outer), col, func(r *vector.Rasterizer, ox, oy float32) {
+		trace(r, outer, ox, oy)
+		trace(r, hole, ox, oy)
+	})
+}
+
+// trace emits a closed contour into the rasteriser, offset to its origin.
+func trace(r *vector.Rasterizer, pts [][2]float64, ox, oy float32) {
+	r.MoveTo(float32(pts[0][0])-ox, float32(pts[0][1])-oy)
+	for _, p := range pts[1:] {
+		r.LineTo(float32(p[0])-ox, float32(p[1])-oy)
+	}
+	r.ClosePath()
+}
+
 // Line strokes a line from (x1, y1) to (x2, y2) with the given width,
 // anti-aliased. A width below one pixel is drawn as one pixel.
 func (c *Canvas) Line(x1, y1, x2, y2, width float64, col color.RGBA) {

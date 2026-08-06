@@ -153,3 +153,35 @@ func TestBlendClipsToCanvas(t *testing.T) {
 		t.Errorf("clipped blend = %d, want it to still paint in-bounds pixels", got)
 	}
 }
+
+func TestRingIsHollow(t *testing.T) {
+	c := canvas.New(60, 60)
+	c.Ring(30, 30, 20, 4, red)
+
+	if got := alphaAt(c, 30, 30); got != 0 {
+		t.Errorf("ring centre = %d, want hollow", got)
+	}
+	// The stroke itself lands on the rim.
+	if got := alphaAt(c, 30+18, 30); got == 0 {
+		t.Error("the rim should be painted")
+	}
+	if got := alphaAt(c, 30+26, 30); got != 0 {
+		t.Errorf("outside the ring = %d, want untouched", got)
+	}
+}
+
+func TestRingWiderThanRadiusFillsTheDisc(t *testing.T) {
+	c := canvas.New(40, 40)
+	c.Ring(20, 20, 8, 20, red)
+	if got := alphaAt(c, 20, 20); got != 255 {
+		t.Errorf("centre = %d, want a filled disc when the stroke swallows the hole", got)
+	}
+}
+
+func TestRingIgnoresNonPositiveRadius(t *testing.T) {
+	c := canvas.New(8, 8)
+	c.Ring(4, 4, 0, 2, red)
+	if alphaAt(c, 4, 4) != 0 {
+		t.Error("a zero radius should draw nothing")
+	}
+}
