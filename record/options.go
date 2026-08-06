@@ -33,7 +33,7 @@ const (
 // canonical default.
 func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fps, scale, frames := nonZero(o.FPS, defaultFPS), nonZero(o.Scale, defaultScale), nonZero(o.Frames, defaultFrames)
-	fs.StringVar(&o.Path, "record", o.Path, "record the run to this GIF path, then exit")
+	fs.StringVar(&o.Path, "record", o.Path, "record the run to this GIF or .mp4 path, then exit")
 	fs.IntVar(&o.FPS, "record-fps", fps, "recording playback rate in frames per second")
 	fs.IntVar(&o.Scale, "record-scale", scale, "downscale factor for the recording")
 	fs.IntVar(&o.Frames, "record-frames", frames, "frames to capture before exiting")
@@ -47,7 +47,7 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 // resolution. A zero Frames leaves the cap to the caller (its own default or
 // the whole run); pre-set it to change the flag's default.
 func (o *Options) AddPacedFlags(fs *pflag.FlagSet) {
-	fs.StringVar(&o.Path, "record", o.Path, "record the run to this GIF path, then exit")
+	fs.StringVar(&o.Path, "record", o.Path, "record the run to this GIF or .mp4 path, then exit")
 	fs.IntVar(&o.Frames, "record-frames", o.Frames, "frames to capture before exiting")
 }
 
