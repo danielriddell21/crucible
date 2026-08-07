@@ -18,5 +18,5 @@ func ExampleBottomBar() {
 		fmt.Printf("(%d,%d) %s\n", line.X, line.Y, line.Text)
 	}
 	// Output:
-	// (8,336) space: pause · +/-: speed · r: restart
+	// (8,336) space: pause | +/-: speed | r: restart
 }

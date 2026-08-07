@@ -29,7 +29,7 @@ func TestBottomBarSingleLineWhenItFits(t *testing.T) {
 	if len(lines) != 1 {
 		t.Fatalf("want 1 row, got %d: %v", len(lines), lines)
 	}
-	if lines[0].Text != "a: one · b: two" {
+	if lines[0].Text != "a: one | b: two" {
 		t.Errorf("text = %q", lines[0].Text)
 	}
 	// Bottom-left origin: last (only) row sits pad + one line above the bottom.
@@ -44,11 +44,11 @@ func TestBottomBarWrapsAndStacks(t *testing.T) {
 		{Key: "b", Action: "two"}, // "b: two" = 6
 		{Key: "c", Action: "three"},
 	}
-	// avail = w - 2*pad = 20 - 2*2 = 16. "a: one · b: two" is 15 (fits);
-	// adding " · c: three" would overflow, so it wraps to a second row.
+	// avail = w - 2*pad = 20 - 2*2 = 16. "a: one | b: two" is 15 (fits);
+	// adding " | c: three" would overflow, so it wraps to a second row.
 	lines := keymap.BottomBar(bindings, 20, 100, 2, keymap.Face{LineHeight: 10, Measure: oneByte})
 	want := []keymap.Line{
-		{X: 2, Y: 100 - 2 - 2*10, Text: "a: one · b: two"},
+		{X: 2, Y: 100 - 2 - 2*10, Text: "a: one | b: two"},
 		{X: 2, Y: 100 - 2 - 1*10, Text: "c: three"},
 	}
 	if !reflect.DeepEqual(lines, want) {
@@ -92,17 +92,19 @@ func TestRowsWrapsWithoutPlacing(t *testing.T) {
 
 	if rows := keymap.Rows(bindings, 200, measure); len(rows) != 1 {
 		t.Errorf("keymap.Rows in plenty of room = %d rows, want 1: %q", len(rows), rows)
-	} else if rows[0] != "space: pause · r: restart · q: quit" {
+	} else if rows[0] != "space: pause | r: restart | q: quit" {
 		t.Errorf("row = %q", rows[0])
 	}
 
-	rows := keymap.Rows(bindings, 20, measure)
-	if len(rows) != 3 {
-		t.Fatalf("keymap.Rows in a narrow space = %d rows, want 3: %q", len(rows), rows)
+	// Narrow enough that no two bindings share a row.
+	const avail = 14
+	rows := keymap.Rows(bindings, avail, measure)
+	if len(rows) != len(bindings) {
+		t.Fatalf("keymap.Rows in a narrow space = %d rows, want one per binding: %q", len(rows), rows)
 	}
 	for _, r := range rows {
-		if len(r) > 20 {
-			t.Errorf("row %q is %d wide, over the 20 allowed", r, len(r))
+		if len(r) > avail {
+			t.Errorf("row %q is %d wide, over the %d allowed", r, len(r), avail)
 		}
 	}
 }

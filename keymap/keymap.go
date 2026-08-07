@@ -7,8 +7,11 @@ package keymap
 
 import "strings"
 
-// sep joins adjacent bindings on a row.
-const sep = " · "
+// sep joins adjacent bindings on a row. It stays inside ASCII: the family's
+// software canvas draws in a 7x13 bitmap face that covers U+0020..U+007E and
+// nothing else, so a prettier separator like "·" would come out as the
+// missing-glyph box in every app that uses it.
+const sep = " | "
 
 // Binding is one control hint: a key or key combination and the action it
 // triggers.
@@ -40,7 +43,7 @@ type Line struct {
 	Text string
 }
 
-// Rows formats bindings as "key: action", joins them with " · ", and wraps them
+// Rows formats bindings as "key: action", joins them with " | ", and wraps them
 // into rows no wider than avail measured by measure. It is [BottomBar]'s layout
 // without its placement, for hints that live somewhere the bottom-left corner
 // is not — inside a stats panel, beside a simulation, as a menu subtitle. The
@@ -50,7 +53,7 @@ func Rows(bindings []Binding, avail int, measure func(string) int) []string {
 }
 
 // BottomBar lays bindings out as a control bar anchored to the bottom-left of a
-// w×h screen. It formats each binding as "key: action", joins them with " · ",
+// w×h screen. It formats each binding as "key: action", joins them with " | ",
 // wraps to the width f allows, and stacks the wrapped rows so the last sits pad
 // above the bottom edge. Rows are returned top-to-bottom; an empty bindings
 // slice returns nil.
