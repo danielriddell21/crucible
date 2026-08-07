@@ -40,13 +40,22 @@ type Line struct {
 	Text string
 }
 
+// Rows formats bindings as "key: action", joins them with " · ", and wraps them
+// into rows no wider than avail measured by measure. It is [BottomBar]'s layout
+// without its placement, for hints that live somewhere the bottom-left corner
+// is not — inside a stats panel, beside a simulation, as a menu subtitle. The
+// caller positions the rows itself. An empty bindings slice returns nil.
+func Rows(bindings []Binding, avail int, measure func(string) int) []string {
+	return wrap(bindings, avail, measure)
+}
+
 // BottomBar lays bindings out as a control bar anchored to the bottom-left of a
 // w×h screen. It formats each binding as "key: action", joins them with " · ",
 // wraps to the width f allows, and stacks the wrapped rows so the last sits pad
 // above the bottom edge. Rows are returned top-to-bottom; an empty bindings
 // slice returns nil.
 func BottomBar(bindings []Binding, w, h, pad int, f Face) []Line {
-	rows := wrap(bindings, w-2*pad, f.Measure)
+	rows := Rows(bindings, w-2*pad, f.Measure)
 	if len(rows) == 0 {
 		return nil
 	}

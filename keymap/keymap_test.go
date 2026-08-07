@@ -80,3 +80,51 @@ func TestBottomBarKeepsOversizedBindingOnItsOwnRow(t *testing.T) {
 		t.Errorf("oversized binding row = %v", lines)
 	}
 }
+
+func TestRowsWrapsWithoutPlacing(t *testing.T) {
+	// The layout half of keymap.BottomBar, for hints an app positions itself.
+	bindings := []keymap.Binding{
+		{Key: "space", Action: "pause"},
+		{Key: "r", Action: "restart"},
+		{Key: "q", Action: "quit"},
+	}
+	measure := func(s string) int { return len(s) }
+
+	if rows := keymap.Rows(bindings, 200, measure); len(rows) != 1 {
+		t.Errorf("keymap.Rows in plenty of room = %d rows, want 1: %q", len(rows), rows)
+	} else if rows[0] != "space: pause · r: restart · q: quit" {
+		t.Errorf("row = %q", rows[0])
+	}
+
+	rows := keymap.Rows(bindings, 20, measure)
+	if len(rows) != 3 {
+		t.Fatalf("keymap.Rows in a narrow space = %d rows, want 3: %q", len(rows), rows)
+	}
+	for _, r := range rows {
+		if len(r) > 20 {
+			t.Errorf("row %q is %d wide, over the 20 allowed", r, len(r))
+		}
+	}
+}
+
+func TestRowsEmpty(t *testing.T) {
+	if rows := keymap.Rows(nil, 100, func(s string) int { return len(s) }); rows != nil {
+		t.Errorf("keymap.Rows(nil) = %q, want nil", rows)
+	}
+}
+
+func TestBottomBarUsesRows(t *testing.T) {
+	// keymap.BottomBar is keymap.Rows plus placement; the text must match exactly.
+	bindings := []keymap.Binding{{Key: "a", Action: "one"}, {Key: "b", Action: "two"}}
+	f := keymap.Face{LineHeight: 10, Measure: func(s string) int { return len(s) }}
+	lines := keymap.BottomBar(bindings, 40, 100, 4, f)
+	rows := keymap.Rows(bindings, 40-2*4, f.Measure)
+	if len(lines) != len(rows) {
+		t.Fatalf("keymap.BottomBar gave %d lines, keymap.Rows gave %d", len(lines), len(rows))
+	}
+	for i := range lines {
+		if lines[i].Text != rows[i] {
+			t.Errorf("line %d: keymap.BottomBar %q, keymap.Rows %q", i, lines[i].Text, rows[i])
+		}
+	}
+}
