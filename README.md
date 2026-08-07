@@ -25,12 +25,15 @@ One package per engine concern, flat at the module root. App-specific vocabulari
 | `hud` | Timed status-line overlay | pandemonium, nemesis (identical copies) |
 | `canvas` | Software RGBA text/menu surface | nemesis, pandemonium |
 | `menu` | Title/pause/settings menu model + input polling | nemesis, pandemonium |
+| `keymap` | Display-free control-hint bar layout | the family's control bars |
+| `window` | Shared Ebiten window setup and resizing policy | the family's front-ends |
 | `store` | JSON settings/records under the user config dir | nemesis, pandemonium |
 | `status` | Cue → timed HUD line pipeline | pandemonium |
 | `narrate` | narrata-backed rewording of status lines | pandemonium |
 | `telemetry` | Generic observer bus with bounded recent feed | pandemonium, nemesis |
 | `synth` | Procedural PCM sound effects, panning, cue shapes | pandemonium, nemesis |
-| `record` | Demo GIF recorder and PNG screenshots | rubix, gambit, galapagos, pandemonium |
+| `record` | Frame capture to GIF, MP4 and PNG | rubix, gambit, galapagos, pandemonium |
+| `demo` | Headless documentation-media toolkit — clips, montages, palette ramps | the family's `tools/demogen` |
 | `hub` | Multi-window leader/child coordination | rubix, hegemony, nemesis |
 | `worldgen` | BSP dungeon generation, corridors, flood-fill, weighted choice | pandemonium, nemesis |
 | `level` | Shared world model + generation pipeline: tiles, heights, half walls, lifts, doors, vents, themes, sky | pandemonium, nemesis |
@@ -41,7 +44,7 @@ One package per engine concern, flat at the module root. App-specific vocabulari
 | `ring` | Fixed-capacity rolling-history buffer | galapagos, vivarium |
 | `paint` | Colour brightness scaling and full-frame framebuffer blend | pandemonium, nemesis |
 
-Only `menu` and `camera` import Ebiten; everything else is plain Go and runs headless.
+Only `menu`, `camera` and `window` import Ebiten; everything else is plain Go and runs headless.
 
 ## Quick start
 
@@ -71,11 +74,11 @@ for x := range screenW {
 }
 ```
 
-See each package's godoc for the full surface, and [`docs/provenance.md`](docs/provenance.md) for exactly which files in which repos each package replaces.
+See each package's godoc for the full surface, and the [Provenance](https://github.com/danielriddell21/crucible/wiki/Provenance) wiki page for exactly which files in which repos each package replaces.
 
 ## The family, migrated
 
-All seven apps — rubix, gambit, vivarium, galapagos, hegemony, pandemonium, and nemesis — now build on crucible. [`docs/provenance.md`](docs/provenance.md) maps every package to the files it replaced, and records what was deliberately left app-side and why. ordinex needs no migration — crucible consumes it as a dependency (the `hub` sorts window ids with it) — and retrievium stays app-side, its sorted-slice search a linear scan's-worth of value away from being worth a dependency.
+All seven apps — rubix, gambit, vivarium, galapagos, hegemony, pandemonium, and nemesis — now build on crucible. The [Provenance](https://github.com/danielriddell21/crucible/wiki/Provenance) wiki page maps every package to the files it replaced, and records what was deliberately left app-side and why. ordinex needs no migration — crucible consumes it as a dependency (the `hub` sorts window ids with it) — and retrievium stays app-side, its sorted-slice search a linear scan's-worth of value away from being worth a dependency.
 
 ## Why a library, not a framework
 

@@ -22,4 +22,4 @@ crucible is a Go library: the shared engine behind the family's Ebitengine apps 
 * Packages that carry app-defined values stay generic — never grow an engine-side message, event, or cue vocabulary. The one engine-owned vocabulary is `level`'s spatial one (tiles, heights, lifts, vents); gameplay meaning (items, markers, hazards, door state) stays in each game.
 * Anything random takes an explicit seed.
 * Tests that import Ebiten need a display: run `xvfb-run -a just test` on a headless machine.
-* `docs/provenance.md` records where each package came from and what deliberately stayed app-side; keep it current when the package set changes.
+* The [Provenance](https://github.com/danielriddell21/crucible/wiki/Provenance) wiki page records where each package came from and what deliberately stayed app-side; keep it current when the package set changes.
