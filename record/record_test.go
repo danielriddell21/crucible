@@ -1,6 +1,7 @@
 package record_test
 
 import (
+	"flag"
 	"image"
 	"image/color"
 	"image/gif"
@@ -252,5 +253,70 @@ func TestSavePNGRoundTrip(t *testing.T) {
 	r, _, _, _ := decoded.At(1, 1).RGBA()
 	if r != 0xffff {
 		t.Fatalf("pixel red = %#x", r)
+	}
+}
+
+func TestOptionsAddStdFlags(t *testing.T) {
+	// The stdlib registration must produce the same flag names, defaults and
+	// behaviour as the pflag one, so a front-end built on flag answers to the
+	// same --record contract as one built on cobra.
+	o := record.Options{Scale: 2}
+	fs := flag.NewFlagSet("t", flag.ContinueOnError)
+	o.AddStdFlags(fs)
+	if err := fs.Parse([]string{"-record", "out.gif", "-record-frames", "120"}); err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if !o.Recording() || o.Path != "out.gif" {
+		t.Errorf("Path = %q, Recording = %v", o.Path, o.Recording())
+	}
+	if o.FPS != 30 {
+		t.Errorf("FPS = %d, want canonical default 30", o.FPS)
+	}
+	if o.Scale != 2 {
+		t.Errorf("Scale = %d, want preset default 2", o.Scale)
+	}
+	if o.Frames != 120 {
+		t.Errorf("Frames = %d, want 120", o.Frames)
+	}
+}
+
+func TestOptionsAddStdFlagsMatchesPflagNames(t *testing.T) {
+	var std, pf record.Options
+	sfs := flag.NewFlagSet("t", flag.ContinueOnError)
+	std.AddStdFlags(sfs)
+	pfs := pflag.NewFlagSet("t", pflag.ContinueOnError)
+	pf.AddFlags(pfs)
+
+	for _, name := range []string{"record", "record-fps", "record-scale", "record-frames"} {
+		s, p := sfs.Lookup(name), pfs.Lookup(name)
+		if s == nil {
+			t.Errorf("stdlib set is missing -%s", name)
+			continue
+		}
+		if p == nil {
+			t.Errorf("pflag set is missing --%s", name)
+			continue
+		}
+		if s.Usage != p.Usage {
+			t.Errorf("%s usage differs:\n stdlib %q\n pflag  %q", name, s.Usage, p.Usage)
+		}
+		if s.DefValue != p.DefValue {
+			t.Errorf("%s default differs: stdlib %q, pflag %q", name, s.DefValue, p.DefValue)
+		}
+	}
+}
+
+func TestOptionsAddPacedStdFlags(t *testing.T) {
+	o := record.Options{}
+	fs := flag.NewFlagSet("t", flag.ContinueOnError)
+	o.AddPacedStdFlags(fs)
+	if fs.Lookup("record-fps") != nil || fs.Lookup("record-scale") != nil {
+		t.Error("paced flags must not register -record-fps or -record-scale")
+	}
+	if err := fs.Parse([]string{"-record", "clip.gif", "-record-frames", "40"}); err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if !o.Recording() || o.Path != "clip.gif" || o.Frames != 40 {
+		t.Errorf("Path = %q, Frames = %d, Recording = %v", o.Path, o.Frames, o.Recording())
 	}
 }

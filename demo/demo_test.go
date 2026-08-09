@@ -222,3 +222,71 @@ func TestRampDegenerate(t *testing.T) {
 		t.Errorf("zero steps should give just black, got %d entries", len(pal))
 	}
 }
+
+func TestDownscaleAveragesBlocks(t *testing.T) {
+	// A 4x4 image split into four 2x2 quadrants of one colour each. At factor
+	// 2 every output pixel is the average of one uniform block, so the result
+	// is those four colours exactly.
+	src := image.NewRGBA(image.Rect(0, 0, 4, 4))
+	quad := [4]color.RGBA{
+		{R: 200, A: 255},
+		{G: 100, A: 255},
+		{B: 40, A: 255},
+		{R: 10, G: 20, B: 30, A: 255},
+	}
+	for y := range 4 {
+		for x := range 4 {
+			src.SetRGBA(x, y, quad[(y/2)*2+x/2])
+		}
+	}
+
+	out := demo.Downscale(src, 2)
+	if got := out.Bounds(); got.Dx() != 2 || got.Dy() != 2 {
+		t.Fatalf("bounds = %v, want 2x2", got)
+	}
+	for y := range 2 {
+		for x := range 2 {
+			r, g, b, a := out.At(x, y).RGBA()
+			want := quad[y*2+x]
+			got := color.RGBA{uint8(r >> 8), uint8(g >> 8), uint8(b >> 8), uint8(a >> 8)}
+			if got != want {
+				t.Errorf("pixel (%d,%d) = %v, want %v", x, y, got, want)
+			}
+		}
+	}
+}
+
+func TestDownscaleMixesWithinABlock(t *testing.T) {
+	// Half black, half white down one 2x1 block averages to mid grey. This is
+	// what separates Downscale from the recorder's point sampler, which would
+	// return whichever pixel it happened to land on.
+	src := image.NewRGBA(image.Rect(0, 0, 2, 2))
+	src.SetRGBA(0, 0, color.RGBA{A: 255})
+	src.SetRGBA(1, 0, color.RGBA{R: 255, G: 255, B: 255, A: 255})
+	src.SetRGBA(0, 1, color.RGBA{A: 255})
+	src.SetRGBA(1, 1, color.RGBA{R: 255, G: 255, B: 255, A: 255})
+
+	r, _, _, _ := demo.Downscale(src, 2).At(0, 0).RGBA()
+	if got := uint8(r >> 8); got != 127 {
+		t.Errorf("red = %d, want 127", got)
+	}
+}
+
+func TestDownscaleBelowTwoIsIdentity(t *testing.T) {
+	src := image.NewRGBA(image.Rect(0, 0, 3, 3))
+	for _, factor := range []int{0, 1, -4} {
+		if got := demo.Downscale(src, factor); got != image.Image(src) {
+			t.Errorf("Downscale(src, %d) returned a copy, want src itself", factor)
+		}
+	}
+}
+
+func TestDownscaleNeverReturnsAnEmptyImage(t *testing.T) {
+	// A factor larger than the source would floor to zero pixels; the result
+	// stays at least 1x1 so a caller can always draw it.
+	src := image.NewRGBA(image.Rect(0, 0, 3, 3))
+	got := demo.Downscale(src, 8).Bounds()
+	if got.Dx() != 1 || got.Dy() != 1 {
+		t.Errorf("bounds = %v, want 1x1", got)
+	}
+}
