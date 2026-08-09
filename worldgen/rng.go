@@ -8,8 +8,16 @@
 // conventional constants), and returns the rooms as [geom.Rect] values.
 // [FloodDist] produces a [Field] of step distances behind plain
 // predicates, with [Reachable] and [StepsBetween] as shorthands and
-// [Neighbors4] as the shared adjacency. Randomness flows from [RNG]
-// (seeded by [NewRNG]), so a seed reproduces the same map everywhere.
+// [Neighbors4] as the shared adjacency.
+//
+// Not every world is a dungeon. [NewLattice] generates the other shape the
+// family builds on: a grid of nodes joined by axis-aligned edges with varied
+// spacing, which a game reads as streets, districts or regions as it likes.
+// [Lattice.Thin] then drops a share of those edges without stranding a node,
+// which is what stops a generated grid looking like graph paper.
+//
+// Randomness flows from [RNG] (seeded by [NewRNG]), so a seed reproduces the
+// same map everywhere.
 package worldgen
 
 import "math/rand/v2"
