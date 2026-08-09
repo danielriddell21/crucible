@@ -5,13 +5,16 @@
 //
 // A [Menu] is a titled list of [Item] values; plain items carry an Action,
 // settings rows carry an Adjust. Each frame the game feeds [Menu.Update] an
-// [Input] snapshot — built by hand, or by [Poll], which reads the
-// conventional key bindings from Ebiten — and plays the returned [Sound].
-// [Menu.Draw] renders onto a [canvas.Canvas] with a [Theme]
-// ([DefaultTheme] is the family's dark palette), and [Bar], [OnOff], and
-// [Number] format settings-row values.
+// [Input] snapshot and plays the returned [Sound]. [Menu.Draw] renders onto a
+// [canvas.Canvas] with a [Theme] ([DefaultTheme] is the family's dark
+// palette), and [Bar], [OnOff], and [Number] format settings-row values.
 //
-// The model itself is display-free; only [Poll] touches Ebiten.
+// This package is display-free: it takes an [Input] and produces pixels in a
+// software canvas, and links no graphics library at all. An Ebiten front-end
+// fills the Input with
+// [github.com/danielriddell21/crucible/menu/ebiteninput.Poll], which reads the
+// family's conventional bindings; a front-end on any other backend fills it
+// from its own key state and gets the same menus.
 package menu
 
 import (
