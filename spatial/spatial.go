@@ -154,6 +154,47 @@ func mod(x, n int) int {
 	return x
 }
 
+// Remove deletes one entry equal to v from the cell containing p, and reports
+// whether it found one. Values filed at several positions need removing at
+// each of them.
+//
+// It is what lets a world that grows also forget: a game streaming terrain in
+// around a player has to drop what it left behind, or the index keeps every
+// road it ever generated. It is a free function for the same reason as
+// [InsertOnce] — a method cannot ask for a comparable element type.
+func Remove[T comparable](g *Grid[T], p geom.Vec2, v T) bool {
+	cx, cy := floorDiv(p.X, g.cell), floorDiv(p.Y, g.cell)
+	if g.cols == 0 {
+		key := [2]int{cx, cy}
+		bucket, ok := drop(g.buckets[key], v)
+		if !ok {
+			return false
+		}
+		g.buckets[key] = bucket
+		g.n--
+		return true
+	}
+	i := g.index(cx, cy)
+	bucket, ok := drop(g.cells[i], v)
+	if !ok {
+		return false
+	}
+	g.cells[i] = bucket
+	g.n--
+	return true
+}
+
+// drop removes the first entry equal to v, preserving the order of the rest so
+// [InsertOnce]'s "same as the last one" test keeps meaning what it says.
+func drop[T comparable](bucket []T, v T) ([]T, bool) {
+	for i, got := range bucket {
+		if got == v {
+			return append(bucket[:i], bucket[i+1:]...), true
+		}
+	}
+	return bucket, false
+}
+
 // InsertOnce files v under the cell containing p unless v is already the most
 // recent value in that cell.
 //

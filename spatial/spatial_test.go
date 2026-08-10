@@ -243,3 +243,71 @@ func TestTorusMatchesToroidalDistance(t *testing.T) {
 		}
 	}
 }
+
+func TestRemove(t *testing.T) {
+	g := spatial.New[int](10)
+	at := geom.Vec2{X: 5, Y: 5}
+	g.Insert(at, 1)
+	g.Insert(at, 2)
+
+	if !spatial.Remove(g, at, 1) {
+		t.Fatal("Remove reported nothing to remove")
+	}
+	if g.Len() != 1 {
+		t.Errorf("Len = %d, want 1", g.Len())
+	}
+	if got := collect(g, at, 0); !slices.Equal(got, []int{2}) {
+		t.Errorf("Near = %v, want [2]", got)
+	}
+	// Removing what is not there changes nothing.
+	if spatial.Remove(g, at, 99) {
+		t.Error("Remove found a value that was never inserted")
+	}
+	if spatial.Remove(g, geom.Vec2{X: 500, Y: 500}, 2) {
+		t.Error("Remove found a value in the wrong cell")
+	}
+	if g.Len() != 1 {
+		t.Errorf("Len = %d after failed removals, want 1", g.Len())
+	}
+}
+
+func TestRemoveOnATorus(t *testing.T) {
+	g := spatial.NewTorus[int](100, 100, 10)
+	at := geom.Vec2{X: 105, Y: -5} // folds to (5, 95)
+	g.Insert(at, 7)
+
+	if !spatial.Remove(g, geom.Vec2{X: 5, Y: 95}, 7) {
+		t.Fatal("Remove did not fold the position the way Insert did")
+	}
+	if g.Len() != 0 {
+		t.Errorf("Len = %d, want 0", g.Len())
+	}
+}
+
+func TestRemoveKeepsTheRestInOrder(t *testing.T) {
+	// InsertOnce compares against the last value in a cell, so removing from
+	// the middle must not reshuffle what is left.
+	g := spatial.New[int](10)
+	at := geom.Vec2{X: 1, Y: 1}
+	for _, v := range []int{1, 2, 3, 4} {
+		g.Insert(at, v)
+	}
+	spatial.Remove(g, at, 2)
+
+	var got []int
+	g.Near(at, 0, func(v int) { got = append(got, v) })
+	if !slices.Equal(got, []int{1, 3, 4}) {
+		t.Errorf("order = %v, want [1 3 4]", got)
+	}
+}
+
+func TestRemoveThenInsertOnce(t *testing.T) {
+	g := spatial.New[int](10)
+	at := geom.Vec2{X: 1, Y: 1}
+	spatial.InsertOnce(g, at, 5)
+	spatial.Remove(g, at, 5)
+	spatial.InsertOnce(g, at, 5)
+	if g.Len() != 1 {
+		t.Errorf("Len = %d, want the value back after removal", g.Len())
+	}
+}
