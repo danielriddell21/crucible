@@ -124,6 +124,10 @@ func (h *Host[S, I]) Err() error {
 func (h *Host[S, I]) Close() error {
 	h.mu.Lock()
 	conn := h.conn
+	// Nobody is joined to a host that has shut down, and saying so here rather
+	// than waiting for the reader goroutine to notice keeps [Host.Joined]
+	// honest the instant Close returns.
+	h.conn, h.enc, h.joined = nil, nil, false
 	h.mu.Unlock()
 	if conn != nil {
 		_ = conn.Close()

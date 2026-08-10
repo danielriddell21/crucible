@@ -192,6 +192,29 @@ func TestErrSurvivesLeave(t *testing.T) {
 	}
 }
 
+func TestTheReasonASessionEndedSurvivesLeave(t *testing.T) {
+	// Not only a session that never started: one that connected, lost the other
+	// player and was then left has to be able to say what happened, because
+	// that is the screen the player is looking at afterwards.
+	var host, join netplay.Session[state, controls]
+	if err := host.StartHosting("127.0.0.1:0"); err != nil {
+		t.Fatalf("StartHosting: %v", err)
+	}
+	if err := join.StartJoining(host.Addr()); err != nil {
+		t.Fatalf("StartJoining: %v", err)
+	}
+	waitFor(t, "the host to see the player", host.Peered)
+
+	join.Leave()
+	waitFor(t, "the host to notice", func() bool { return host.Err() != nil })
+	dropped := host.Err()
+
+	host.Leave()
+	if got := host.Err(); got == nil {
+		t.Errorf("Err = nil after Leave, want %v to survive", dropped)
+	}
+}
+
 func TestJoinerNoticesTheHostGoingAway(t *testing.T) {
 	var host, join netplay.Session[state, controls]
 	if err := host.StartHosting("127.0.0.1:0"); err != nil {

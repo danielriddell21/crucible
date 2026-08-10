@@ -101,14 +101,25 @@ func (s *Session[S, I]) Leave() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.host != nil {
+		// Take the reason before closing, or it is lost: Err reads through to
+		// the live host, and a moment from now there will not be one.
+		s.keep(s.host.Err())
 		_ = s.host.Close()
 		s.host = nil
 	}
 	if s.client != nil {
+		s.keep(s.client.Err())
 		_ = s.client.Close()
 		s.client = nil
 	}
 	s.role = Offline
+}
+
+// keep records a reason a session ended, if there was one. The caller holds mu.
+func (s *Session[S, I]) keep(err error) {
+	if err != nil {
+		s.failed = err
+	}
 }
 
 // Role returns which end of the session this process is.
