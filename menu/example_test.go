@@ -7,7 +7,7 @@ import (
 )
 
 // ExampleMenu builds a tiny settings menu and drives it with hand-made
-// input snapshots; in a game the snapshots come from [menu.Poll].
+// input snapshots; in an Ebiten game they come from ebiteninput.Poll.
 func ExampleMenu() {
 	sound := true
 	m := &menu.Menu{

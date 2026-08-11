@@ -18,7 +18,7 @@ crucible is a Go library: the shared engine behind the family's Ebitengine apps 
 
 ## Engine rules
 
-* Only `menu`, `camera`, and `window` may import Ebiten; everything else stays display-free.
+* Only `menu/ebiteninput`, `camera`, and `window` may import Ebiten; everything else stays display-free. `menu` itself must not — a raylib front-end uses it.
 * Packages that carry app-defined values stay generic — never grow an engine-side message, event, or cue vocabulary. The one engine-owned vocabulary is `level`'s spatial one (tiles, heights, lifts, vents); gameplay meaning (items, markers, hazards, door state) stays in each game.
 * Anything random takes an explicit seed.
 * Tests that import Ebiten need a display: run `xvfb-run -a just test` on a headless machine.

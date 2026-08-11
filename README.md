@@ -21,10 +21,11 @@ One package per engine concern, flat at the module root. App-specific vocabulari
 
 | Package | What it is | Consolidated from |
 |---|---|---|
-| `geom` | Vectors, grid coords, rects, clamps | vivarium, pandemonium, nemesis, hegemony |
+| `geom` | 2D/3D vectors, grid coords, rects, clamps, angle folding, easing | vivarium, pandemonium, nemesis, hegemony, autobahn |
 | `hud` | Timed status-line overlay | pandemonium, nemesis (identical copies) |
 | `canvas` | Software RGBA text/menu surface | nemesis, pandemonium |
-| `menu` | Title/pause/settings menu model + input polling | nemesis, pandemonium |
+| `menu` | Title/pause/settings menu model, display-free | nemesis, pandemonium, autobahn |
+| `menu/ebiteninput` | The conventional menu bindings, read from Ebiten | nemesis, pandemonium |
 | `keymap` | Display-free control-hint bar layout | the family's control bars |
 | `window` | Shared Ebiten window setup and resizing policy | the family's front-ends |
 | `store` | JSON settings/records under the user config dir | nemesis, pandemonium |
@@ -35,16 +36,19 @@ One package per engine concern, flat at the module root. App-specific vocabulari
 | `record` | Frame capture to GIF, MP4 and PNG | rubix, gambit, galapagos, pandemonium |
 | `demo` | Headless documentation-media toolkit — clips, montages, palette ramps | the family's `tools/demogen` |
 | `hub` | Multi-window leader/child coordination | rubix, hegemony, nemesis |
-| `worldgen` | BSP dungeon generation, corridors, flood-fill, weighted choice | pandemonium, nemesis |
+| `worldgen` | BSP dungeons, corridors, flood-fill, weighted choice, and seeded grid lattices | pandemonium, nemesis, autobahn |
 | `level` | Shared world model + generation pipeline: tiles, heights, half walls, lifts, doors, vents, themes, sky | pandemonium, nemesis |
 | `raycast` | Raycasting camera, DDA, billboards, height-aware column walker | pandemonium, nemesis |
 | `view` | Display-free 2D pan/zoom camera: world↔screen, follow, fit-to-bounds | galapagos |
 | `camera` | Ebiten draw transform layered over a 2D view | vivarium |
 | `rng` | Deterministic seeded sub-streams (PCG) | galapagos, hegemony |
 | `ring` | Fixed-capacity rolling-history buffer | galapagos, vivarium |
-| `paint` | Colour brightness scaling and full-frame framebuffer blend | pandemonium, nemesis |
+| `paint` | Colour brightness scaling and full-frame framebuffer blend | pandemonium, nemesis, autobahn |
+| `spatial` | Uniform grid for radius queries, open-plane or toroidal | vivarium, autobahn |
+| `netplay` | Two-player host/join sessions over gob, with a lobby-facing session | autobahn |
+| `pinhole` | Perspective camera: world→image projection and ground ranging | autobahn |
 
-Only `menu`, `camera` and `window` import Ebiten; everything else is plain Go and runs headless.
+Only `menu/ebiteninput`, `camera` and `window` import Ebiten; everything else is plain Go and runs headless. `menu` itself is display-free, which is how a raylib front-end shares the family's menus.
 
 ## Quick start
 

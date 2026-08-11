@@ -1,7 +1,8 @@
 // Package demo assembles documentation media from a headless simulation: it
-// drives a run and captures frames into a [record.Recorder] ([Clip]), tiles
-// stills into a contact sheet ([Montage]), and builds the brightness ramps a
-// clean GIF palette needs ([Ramp]).
+// drives a run and captures frames into a [record.Recorder] ([Clip]), shrinks
+// a frame to a sensible size ([Downscale]), tiles stills into a contact sheet
+// ([Montage]), and builds the brightness ramps a clean GIF palette needs
+// ([Ramp]).
 //
 // It is display-free. A front-end that can draw a frame into a pixel buffer —
 // its own software renderer, or a crucible canvas — generates its whole docs/demos set
@@ -126,6 +127,40 @@ func Montage(cells []image.Image, cols, gap int, bg color.Color) *image.RGBA {
 		x := gap + (i%cols)*(cellW+gap)
 		y := gap + (i/cols)*(cellH+gap)
 		draw.Draw(out, image.Rect(x, y, x+b.Dx(), y+b.Dy()), c, b.Min, draw.Src)
+	}
+	return out
+}
+
+// Downscale shrinks src by an integer factor, averaging each factor×factor
+// block of source pixels into one. A factor below two returns src unchanged.
+//
+// This is the filter for a still that will be looked at: a montage cell, a
+// screenshot, a documentation frame. It is deliberately not the one
+// [record.Recorder] applies to captured frames, which point-samples instead —
+// averaging mixes new colours that were never in the scene, and a frame-diffed
+// GIF needs unchanged regions to quantise to byte-identical palette entries.
+func Downscale(src image.Image, factor int) image.Image {
+	if factor < 2 {
+		return src
+	}
+	b := src.Bounds()
+	w, h := b.Dx()/factor, b.Dy()/factor
+	out := image.NewRGBA(image.Rect(0, 0, max(w, 1), max(h, 1)))
+	n := uint32(factor * factor)
+	for y := range h {
+		for x := range w {
+			var sr, sg, sb, sa uint32
+			for dy := range factor {
+				for dx := range factor {
+					r, g, bl, a := src.At(b.Min.X+x*factor+dx, b.Min.Y+y*factor+dy).RGBA()
+					// RGBA returns 16-bit premultiplied channels; drop to 8.
+					sr, sg, sb, sa = sr+r>>8, sg+g>>8, sb+bl>>8, sa+a>>8
+				}
+			}
+			out.SetRGBA(x, y, color.RGBA{
+				R: uint8(sr / n), G: uint8(sg / n), B: uint8(sb / n), A: uint8(sa / n),
+			})
+		}
 	}
 	return out
 }

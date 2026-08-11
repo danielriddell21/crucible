@@ -238,6 +238,12 @@ func (r *Recorder) Save(path string) error {
 	return nil
 }
 
+// downscale shrinks a captured frame by point-sampling one source pixel per
+// output pixel. It does not average, deliberately: averaging mixes colours
+// that were never in the scene, which costs a hand-built palette its exact
+// matches and leaves a frame-diffed GIF with unchanged regions that no longer
+// quantise byte-identically. Use [github.com/danielriddell21/crucible/demo.Downscale]
+// for a still that will be looked at rather than differenced.
 func downscale(img image.Image, factor int) *image.RGBA {
 	b := img.Bounds()
 	w, h := b.Dx()/factor, b.Dy()/factor

@@ -4,10 +4,14 @@
 //
 // [Vec2] is the continuous-space vector, with the usual arithmetic plus the
 // toroidal-world helpers ([Vec2.WrapTo], [Vec2.ShortestDelta],
-// [Vec2.ToroidalDist]) the ecosystem sims rely on. [Coord] addresses a tile
+// [Vec2.ToroidalDist]) the ecosystem sims rely on. [Vec3] is its
+// three-dimensional counterpart for the Y-up worlds, where the ground is the
+// XZ plane and [Vec3.Ground] drops back to a [Vec2]. [Coord] addresses a tile
 // grid cell and [Rect] an axis-aligned span of cells; [Coord.Vec2] bridges
 // the two spaces at cell centres. [Clamp] and [Clamp01] are the range
-// limiters repeated across every settings screen and camera in the family.
+// limiters repeated across every settings screen and camera in the family,
+// and [WrapPi] and [AngleDiff] the angle folding every steering and turning
+// controller in it needs.
 package geom
 
 import (
@@ -99,6 +103,53 @@ func wrapDelta(d, size float64) float64 {
 	return d
 }
 
+// Vec3 is a three-dimensional vector. The family's 3D worlds are Y-up, with
+// the ground on the XZ plane, so [Vec3.Ground] drops the height to give the
+// [Vec2] the 2D helpers work on.
+type Vec3 struct {
+	X, Y, Z float64
+}
+
+// Add returns v + o.
+func (v Vec3) Add(o Vec3) Vec3 { return Vec3{v.X + o.X, v.Y + o.Y, v.Z + o.Z} }
+
+// Sub returns v - o.
+func (v Vec3) Sub(o Vec3) Vec3 { return Vec3{v.X - o.X, v.Y - o.Y, v.Z - o.Z} }
+
+// Scale returns v with every component multiplied by s.
+func (v Vec3) Scale(s float64) Vec3 { return Vec3{v.X * s, v.Y * s, v.Z * s} }
+
+// Dot returns the dot product of v and o.
+func (v Vec3) Dot(o Vec3) float64 { return v.X*o.X + v.Y*o.Y + v.Z*o.Z }
+
+// Cross returns the cross product of v and o.
+func (v Vec3) Cross(o Vec3) Vec3 {
+	return Vec3{
+		v.Y*o.Z - v.Z*o.Y,
+		v.Z*o.X - v.X*o.Z,
+		v.X*o.Y - v.Y*o.X,
+	}
+}
+
+// Len returns the length of v.
+func (v Vec3) Len() float64 { return math.Sqrt(v.Dot(v)) }
+
+// Dist returns the distance between v and o.
+func (v Vec3) Dist(o Vec3) float64 { return v.Sub(o).Len() }
+
+// Normalize returns v scaled to unit length. The zero vector is returned
+// unchanged.
+func (v Vec3) Normalize() Vec3 {
+	l := v.Len()
+	if l == 0 {
+		return v
+	}
+	return Vec3{v.X / l, v.Y / l, v.Z / l}
+}
+
+// Ground returns the horizontal components of v, dropping its height.
+func (v Vec3) Ground() Vec2 { return Vec2{v.X, v.Z} }
+
 // Coord is an integer cell position on a tile grid.
 type Coord struct {
 	X, Y int
@@ -137,3 +188,55 @@ func Clamp[T cmp.Ordered](v, lo, hi T) T {
 
 // Clamp01 returns v limited to the range [0, 1].
 func Clamp01(v float64) float64 { return Clamp(v, 0, 1) }
+
+// Float is the floating-point width the angle helpers accept. They are
+// generic over it because the family's sims are not all float64: a driving
+// sim carrying float32 positions would otherwise cast through float64 twice
+// on every steering correction.
+type Float interface {
+	~float32 | ~float64
+}
+
+// WrapPi folds an angle in radians into the range [-π, π].
+func WrapPi[F Float](a F) F {
+	const twoPi = 2 * math.Pi
+	w := math.Mod(float64(a), twoPi)
+	if w > math.Pi {
+		w -= twoPi
+	}
+	if w < -math.Pi {
+		w += twoPi
+	}
+	return F(w)
+}
+
+// AngleDiff returns the signed shortest rotation from b to a, in [-π, π]. It
+// is positive when a lies anticlockwise of b, so a steering controller can
+// use it directly as an error term.
+func AngleDiff[F Float](a, b F) F { return WrapPi(a - b) }
+
+// MoveToward steps current toward target by at most step, stopping exactly on
+// target rather than overshooting it. Use it when the rate of change is what
+// matters — a dial that may move so far per second, a value that must not jump.
+func MoveToward[F Float](current, target, step F) F {
+	d := target - current
+	if d <= step && -d <= step {
+		return target
+	}
+	if d > 0 {
+		return current + step
+	}
+	return current - step
+}
+
+// Approach eases current toward target at the given rate, covering the same
+// fraction of the remaining gap per second however long dt is. Use it when the
+// shape of the motion is what matters — a camera settling behind a car, a
+// remote player's position being reconciled with the authoritative one.
+//
+// Unlike a plain lerp by rate*dt, this is frame-rate independent: halving the
+// step size and taking twice as many lands in the same place, so a run at 30
+// and one at 120 frames per second look alike.
+func Approach[F Float](current, target, rate, dt F) F {
+	return current + (target-current)*F(1-math.Exp(float64(-rate*dt)))
+}
