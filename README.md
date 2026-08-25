@@ -6,6 +6,7 @@ The shared Ebitengine app/game engine behind the tool family — the GUI panels,
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/danielriddell21/crucible.svg)](https://pkg.go.dev/github.com/danielriddell21/crucible)
 [![CI](https://github.com/danielriddell21/crucible/actions/workflows/ci.yaml/badge.svg)](https://github.com/danielriddell21/crucible/actions/workflows/ci.yaml)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=danielriddell21_crucible2&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=danielriddell21_crucible2)
 [![Go 1.26](https://img.shields.io/badge/go-1.26-blue)](https://go.dev)
 [![MIT License](https://img.shields.io/badge/licence-MIT-green)](LICENSE)
 
