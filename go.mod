@@ -1,6 +1,6 @@
 module github.com/danielriddell21/crucible
 
-go 1.26.3
+go 1.27.1
 
 require (
 	github.com/danielriddell21/narrata v0.2.0
