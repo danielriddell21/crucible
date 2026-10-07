@@ -8,9 +8,9 @@ on:
 
 jobs:
   ci:
-    uses: danielriddell21/github-actions/.github/workflows/ci.yaml@v1
+    uses: danielriddell21/github-actions/.github/workflows/ci.yaml@v2
     permissions:
-      contents: write
+      contents: read
     with:
       ebiten: true
       test-command: xvfb-run -a go test -coverprofile=coverage.txt ./...
