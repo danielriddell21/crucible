@@ -1,7 +1,7 @@
 github.com/danielriddell21/narrata v0.2.0 h1:oJEaIXEhkLpyH9642QIfag4coHHX4E+WKLdAK7iZ12A=
 github.com/danielriddell21/narrata v0.2.0/go.mod h1:VxWovArOM+OM1uwKHmezN4UwAnwUket5a5i58QaZprw=
-github.com/danielriddell21/ordinex/v2 v2.0.1 h1:06R1COWpakgZI+GTsqGwgXcKaeXXuK1jlCLg9zkS0KI=
-github.com/danielriddell21/ordinex/v2 v2.0.1/go.mod h1:6iZREoGEq3nhCSvjUqgOOU7WKlASs9pu28gENi3GqmI=
+github.com/danielriddell21/ordinex/v2 v2.0.2 h1:n40sGv2jXCuCw5dRaNlePmx9xEy6PVph8JFyTRewqBM=
+github.com/danielriddell21/ordinex/v2 v2.0.2/go.mod h1:jnmJS3/GkLIX9tIdbL5junB6BmE31P0By+knvUkL7c8=
 github.com/ebitengine/gomobile v0.0.0-20260820040257-d11f821a26a6 h1:Tnc3YtzxhgsvNdNrER9wWkGJbyjOwyUuzjUY5rZK72k=
 github.com/ebitengine/gomobile v0.0.0-20260820040257-d11f821a26a6/go.mod h1:gwnFEwdzWZpNehgwkeK4756Ez58f58bXz6bgEAq+xqk=
 github.com/ebitengine/hideconsole v1.0.0 h1:5J4U0kXF+pv/DhiXt5/lTz0eO5ogJ1iXb8Yj1yReDqE=
